@@ -10,9 +10,11 @@ import SwiftUI
 struct ContentView: View {
     @State private var isRunning: Bool = false
     @State private var editorText: String = "// Write your Swift script here...\nprint(\"Hello, World!\")"
-    @State private var consoleOutput: String = "Console output will appear here..."
+    @State private var consoleOutput: String = ""
     @State private var lastExitCode: Int? = nil
     @State private var fileName: String?
+    
+    private let executor = ScriptExecutor()
     
     var body: some View {
         NavigationStack {
@@ -39,7 +41,7 @@ struct ContentView: View {
                 }
                 ToolbarItemGroup(placement: .secondaryAction) {
                     Button(action: {
-                        isRunning = true
+                        runScript()
                     }) {
                         Label("Run", systemImage: "play.fill")
                             .tint(.green)
@@ -63,6 +65,31 @@ struct ContentView: View {
                     }
                     .disabled(isRunning)
                     .help("Export the output")
+                }
+            }
+        }
+    }
+}
+
+extension ContentView {
+    private func runScript() {
+        consoleOutput = ""
+        isRunning = true
+        lastExitCode = nil
+        Task {
+            let stream = executor.execute(editorText)
+            
+            for await event in stream {
+                switch event {
+                case .stdout(let line):
+                    await MainActor.run {
+                        consoleOutput += line
+                    }
+                case .exitCode(let code):
+                    await MainActor.run {
+                        lastExitCode = Int(code)
+                        isRunning = false
+                    }
                 }
             }
         }
