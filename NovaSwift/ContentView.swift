@@ -9,11 +9,24 @@ import SwiftUI
 internal import UniformTypeIdentifiers
 
 struct ContentView: View {
+    // MARK: - State Properties
+    
+    // Tracks execution status to toggle UI interactivity (e.g., disable Import while running).
     @State private var isRunning: Bool = false
+    
+    // The script content to be executed.
     @State private var editorText: String = ""
+    
+    // Accumulates stdout/stderr from the running process.
     @State private var consoleOutput: String = ""
+    
+    // Stores the exit code of the last run (0 for success, non-zero for error).
     @State private var lastExitCode: Int? = nil
+    
+    // Displayed in the window title to indicate the currently active file.
     @State private var fileName: String?
+    
+    // MARK: - File Management State
     @State private var isImporting: Bool = false
     @State private var isExporting: Bool = false
     @State private var exportDocument: TextDocument?
@@ -23,6 +36,7 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                // HSplitView allows the user to resize the editor and output panes.
                 HSplitView {
                     InputView(editorText: $editorText)
                         .frame(minWidth: 400, maxWidth: .infinity)
@@ -86,6 +100,8 @@ struct ContentView: View {
                     .help("Export the output")
                 }
             }
+            // Presents the native file picker for importing Swift scripts.
+            // Security Scoped Resource access is handled in the closure.
             .fileImporter(
                 isPresented: $isImporting,
                 allowedContentTypes: [.swiftSource, .plainText],
@@ -93,11 +109,13 @@ struct ContentView: View {
             ) { result in
                 do {
                     guard let selectedFile: URL = try result.get().first else { return }
+                    // Crucial: Must start accessing the security-scoped resource to read files outside the sandbox.
                     if selectedFile.startAccessingSecurityScopedResource() {
                         defer { selectedFile.stopAccessingSecurityScopedResource() }
                         let fileContent = try String(contentsOf: selectedFile, encoding: .utf8)
                         
-                        // async UI update
+                        // Wrap the UI update in a Task because the fileImporter completion is synchronous,
+                        // but updating @State must happen on the MainActor.
                         Task { @MainActor in
                             editorText = fileContent
                             fileName = selectedFile.lastPathComponent
@@ -107,6 +125,7 @@ struct ContentView: View {
                     print("Error reading file: \(error.localizedDescription)")
                 }
             }
+            // exports the current console output to a text file.
             .fileExporter(
                 isPresented: $isExporting,
                 document: exportDocument,
@@ -122,27 +141,24 @@ struct ContentView: View {
 }
 
 extension ContentView {
+    /// Resets the console and initiates the script execution.
+    /// Uses an async Task to consume the event stream without blocking the UI.
     private func runScript() {
-        // 1. Reset UI state for a new run
         consoleOutput = ""
         isRunning = true
         lastExitCode = nil
         
-        // 2. Start a background task to bridge the imperative Process world with SwiftUI
         Task {
-            // 3. Call the executor which returns a stream of events (output chunks or exit code)
+            // execute() returns an AsyncStream that yields output events in real-time.
             let stream = executor.execute(editorText)
             
-            // 4. Await events as they arrive in real-time
             for await event in stream {
                 switch event {
                 case .stdout(let line):
-                    // 5. Update the UI on the Main Actor (UI Thread)
                     await MainActor.run {
                         consoleOutput += line
                     }
                 case .exitCode(let code):
-                    // 6. Handle process termination
                     await MainActor.run {
                         lastExitCode = Int(code)
                         isRunning = false

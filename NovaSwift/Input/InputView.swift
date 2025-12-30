@@ -12,11 +12,8 @@ struct InputView: View {
     
     var body: some View {
         ZStack(alignment: .topLeading) {
-            TextEditor(text: $editorText)
-                .font(.system(.body, design: .monospaced))
-                .scrollContentBackground(.hidden)
-                .background(Color(NSColor.textBackgroundColor))
-                .padding(4)
+            SyntaxHighlightEditor(text: $editorText)
+                .padding(0) // NSTextView inside handles its own padding
         }
     }
 }

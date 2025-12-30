@@ -16,10 +16,15 @@ enum ProcessOutput {
 class ScriptExecutor {
     private var process: Process?
     
+    /// Executes the provided Swift script string in a subprocess.
+    ///
+    /// - Parameter script: The source code of the script to execute.
+    /// - Returns: An `AsyncStream` that yields execution events (stdout/stderr output and the final exit code).
     func execute(_ script: String) -> AsyncStream<ProcessOutput> {
         AsyncStream { continuation in
-            // 1. Prepare the temporary file
-            // Swift scripts need to be on disk to be executed by the compiler/interpreter
+            // 1. Write Script to Disk
+            // The Swift compiler/interpreter expects a file path. We write the script content
+            // to a temporary file in the user's temp directory.
             let tempDirectory = FileManager.default.temporaryDirectory
             let scriptPath = tempDirectory.appending(path: "script.swift")
             
@@ -32,20 +37,27 @@ class ScriptExecutor {
             }
             
             // 2. Configure the Process
-            // We use /usr/bin/env to locate the swift executable in the user's path
+            // We use /usr/bin/env to locate the `swift` executable, ensuring compatibility across different setups.
             self.process = Process()
             process?.executableURL = URL(fileURLWithPath: "/usr/bin/env")
             process?.arguments = ["swift", "\(scriptPath.path)"]
             
-            // 3. Setup Pipes for capturing Output
-            // A Pipe connects the process's stdout/stderr to our code
+            // 3. Setup Pipes
+            // A Pipe connects the process's standard output and error to our application.
             let pipe = Pipe()
             process?.standardOutput = pipe
             process?.standardError = pipe
             
             // 4. Handle Live Output with Buffering
-            // We maintain a buffer to handle cases where a multi-byte character (e.g., Emoji)
-            // is split across two data chunks. Without this, split characters would decode incorrectly.
+            //
+            // Crucial: We must handle cases where a multi-byte UTF-8 character (e.g., an Emoji or accented char)
+            // is split across two separate data chunks read from the pipe.
+            //
+            // If we blindly decode `String(data: chunk)`, a split character would result in an invalid sequence
+            // or replacement character ().
+            //
+            // To fix this, we maintain a persistent `buffer`. We only decode complete UTF-8 sequences
+            // and keep any partial trailing bytes in the buffer for the next read operation.
             var buffer = Data()
             
             pipe.fileHandleForReading.readabilityHandler = { handle in
@@ -54,8 +66,9 @@ class ScriptExecutor {
                 
                 buffer.append(data)
                 
-                // Scan backwards to find the start of the last UTF-8 sequence
-                // to determine if it is complete.
+                // Scan backwards to find the last valid UTF-8 boundary.
+                // A UTF-8 character can be 1-4 bytes. We check the last few bytes to see if
+                // we have a partial sequence at the end of the buffer.
                 var splitIndex = buffer.endIndex
                 var i = 0
                 
@@ -64,59 +77,57 @@ class ScriptExecutor {
                     let index = buffer.endIndex - 1 - i
                     let byte = buffer[index]
                     
-                    // Check if byte is a standard ASCII char (0xxxxxxx)
+                    // Standard ASCII (0xxxxxxx) is always a complete unit.
                     if (byte & 0x80) == 0 {
-                        // ASCII is always complete in 1 byte.
-                        // Everything before and including this is valid to print.
                         splitIndex = buffer.endIndex
                         break
                     }
-                    // Check if byte is a Start Byte (11xxxxxx)
+                    // Start Byte (11xxxxxx) indicates the beginning of a multi-byte sequence.
                     else if (byte & 0xC0) == 0xC0 {
-                        // Determine required length for this character
+                        // Determine the expected length based on the start byte prefix.
                         let expectedLen: Int
                         if (byte & 0xE0) == 0xC0 { expectedLen = 2 }      // 110xxxxx
                         else if (byte & 0xF0) == 0xE0 { expectedLen = 3 } // 1110xxxx
                         else if (byte & 0xF8) == 0xF0 { expectedLen = 4 } // 11110xxx
-                        else { expectedLen = 1 } // Fallback/Invalid
+                        else { expectedLen = 1 } // Fallback for invalid byte
                         
                         let currentLen = i + 1
                         if currentLen < expectedLen {
-                            // We don't have enough bytes for this char yet.
-                            // Stop processing here and keep this sequence in the buffer.
+                            // The sequence is incomplete (we have fewer bytes than expected).
+                            // Stop processing at this start byte; it will be processed when the rest arrives.
                             splitIndex = index
                         } else {
-                            // We have the full sequence.
+                            // The sequence is complete.
                             splitIndex = buffer.endIndex
                         }
                         break
                     }
-                    // If byte is a Continuation Byte (10xxxxxx), keep scanning back.
+                    // Continuation Byte (10xxxxxx): keep scanning backwards to find the start byte.
                     i += 1
                 }
                 
-                // Extract the valid chunk to decode
+                // Extract the valid, printable chunk
                 let validChunk = buffer[..<splitIndex]
                 let leftover = buffer[splitIndex...]
                 
                 if !validChunk.isEmpty {
-                    // Use decoding helper that replaces invalid sequences rather than returning nil
+                    // Decoding is now safe as we know `validChunk` ends on a character boundary.
                     let output = String(decoding: validChunk, as: UTF8.self)
                     continuation.yield(.stdout(output))
                 }
                 
-                // Save incomplete bytes for the next read
+                // Retain only the incomplete bytes for the next read
                 buffer = Data(leftover)
             }
             
             // 5. Handle Termination
-            // Called when the process finishes (successfully or crashes)
+            // When the process finishes, we signal the end of the stream and pass the exit code.
             process?.terminationHandler = { p in
                 continuation.yield(.exitCode(p.terminationStatus))
-                continuation.finish() // Closes the AsyncStream
+                continuation.finish()
             }
             
-            // 6. Launch the Process
+            // 6. Launch
             do {
                 try process?.run()
             } catch {

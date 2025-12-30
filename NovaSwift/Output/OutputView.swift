@@ -11,16 +11,8 @@ struct OutputView: View {
     let output: String
         
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading) {
-                Text(output)
-                    .font(.system(.subheadline, design: .monospaced))
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding()
-        }
-        .background(Color.black.opacity(0.03))
+        ConsoleTextView(text: output)
+            .background(Color.black.opacity(0.03))
     }
 }
 
