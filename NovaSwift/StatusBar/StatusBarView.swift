@@ -16,13 +16,13 @@ struct StatusBarView: View {
             // Running Indication
             if isRunning {
                 ProgressView()
-                    .controlSize(.small)
+                    .controlSize(.regular)
                 Text("Running...")
-                    .font(.caption)
+                    .font(.largeTitle)
                     .foregroundColor(.primary)
             } else {
                 Text("Ready")
-                    .font(.caption)
+                    .font(.largeTitle)
                     .foregroundColor(.green)
             }
             
@@ -33,17 +33,17 @@ struct StatusBarView: View {
                     Image(systemName: code == 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                     Text("Exit Code: \(code)")
                 }
-                .font(.caption)
+                .font(.largeTitle)
                 .foregroundColor(code == 0 ? .green : .red)
             }
         }
-        .padding(.horizontal, 12)
-        .frame(height: 28)
+        .padding(.horizontal, 24)
+        .frame(height: 42)
         .background(.ultraThinMaterial)
     }
 }
 #Preview("Ready") {
-    StatusBarView(isRunning: false, exitCode: 1)
+    StatusBarView(isRunning: false, exitCode: 0)
 }
 #Preview("Running") {
     StatusBarView(isRunning: true, exitCode: 1)

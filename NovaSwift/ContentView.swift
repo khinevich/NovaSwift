@@ -14,17 +14,12 @@ struct ContentView: View {
     // Tracks execution status to toggle UI interactivity (e.g., disable Import while running).
     @State private var isRunning: Bool = false
     
-    // The script content to be executed.
+    // MARK: - Content State
     @State private var editorText: String = ""
-    
-    // Accumulates stdout/stderr from the running process.
     @State private var consoleOutput: String = ""
-    
-    // Stores the exit code of the last run (0 for success, non-zero for error).
-    @State private var lastExitCode: Int? = nil
-    
-    // Displayed in the window title to indicate the currently active file.
+    @State private var lastExitCode: Int?
     @State private var fileName: String?
+    @State private var selectedRange: NSRange = NSRange(location: 0, length: 0)
     
     // MARK: - File Management State
     @State private var isImporting: Bool = false
@@ -141,24 +136,27 @@ struct ContentView: View {
 }
 
 extension ContentView {
-    /// Resets the console and initiates the script execution.
-    /// Uses an async Task to consume the event stream without blocking the UI.
     private func runScript() {
+        // 1. Reset UI state for a new run
         consoleOutput = ""
         isRunning = true
         lastExitCode = nil
         
+        // 2. Start a background task to bridge the imperative Process world with SwiftUI
         Task {
-            // execute() returns an AsyncStream that yields output events in real-time.
+            // 3. Call the executor which returns a stream of events (output chunks or exit code)
             let stream = executor.execute(editorText)
             
+            // 4. Await events as they arrive in real-time
             for await event in stream {
                 switch event {
                 case .stdout(let line):
+                    // 5. Update the UI on the Main Actor (UI Thread)
                     await MainActor.run {
                         consoleOutput += line
                     }
                 case .exitCode(let code):
+                    // 6. Handle process termination
                     await MainActor.run {
                         lastExitCode = Int(code)
                         isRunning = false
@@ -166,6 +164,27 @@ extension ContentView {
                 }
             }
         }
+    }
+    
+    /// Calculates the character index (NSRange) for a given line and column
+    /// and updates the editor's cursor position.
+    private func jumpToLocation(line: Int, col: Int) {
+        let lines = editorText.components(separatedBy: .newlines)
+        guard line > 0, line <= lines.count else { return }
+        
+        var location = 0
+        for i in 0..<(line - 1) {
+            // +1 for the newline character that components(separatedBy:) removes
+            location += lines[i].utf16.count + 1
+        }
+        
+        // Add column offset (clamping to the line length to prevent crashes)
+        let lineLength = lines[line - 1].utf16.count
+        // Swift errors are 1-based, index is 0-based.
+        let columnOffset = min(max(0, col - 1), lineLength)
+        location += columnOffset
+        
+        selectedRange = NSRange(location: location, length: 0)
     }
 }
 

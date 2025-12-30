@@ -20,7 +20,5 @@ struct InputView: View {
 
 #Preview {
     @Previewable @State var editorText: String = "Preview Text"
-    @Previewable @State var isRunning: Bool = false
-    
     InputView(editorText: $editorText)
 }
