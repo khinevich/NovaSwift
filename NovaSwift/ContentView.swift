@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var isRunning: Bool = false
-    @State private var editorText: String = "// Write your Swift script here...\nprint(\"Hello, World!\")"
+    @State private var editorText: String = ""
     @State private var consoleOutput: String = ""
     @State private var lastExitCode: Int? = nil
     @State private var fileName: String?
