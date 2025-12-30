@@ -10,22 +10,9 @@
 		517512882F030D9300B4368A /* NovaSwift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NovaSwift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		515D82D52F03FDFB00B0771D /* Exceptions for "NovaSwift" folder in "NovaSwift" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 517512872F030D9300B4368A /* NovaSwift */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5175128A2F030D9300B4368A /* NovaSwift */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				515D82D52F03FDFB00B0771D /* Exceptions for "NovaSwift" folder in "NovaSwift" target */,
-			);
 			path = NovaSwift;
 			sourceTree = "<group>";
 		};

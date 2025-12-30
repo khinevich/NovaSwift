@@ -8,11 +8,11 @@
 import SwiftUI
 
 struct InputView: View {
-    @Binding var text: String
+    @Binding var editorText: String
     
     var body: some View {
         ZStack(alignment: .topLeading) {
-            TextEditor(text: $text)
+            TextEditor(text: $editorText)
                 .font(.system(.body, design: .monospaced))
                 .scrollContentBackground(.hidden)
                 .background(Color(NSColor.textBackgroundColor))
@@ -22,6 +22,8 @@ struct InputView: View {
 }
 
 #Preview {
-    @Previewable @State var text: String = "Preview Text"
-    InputView(text: $text)
+    @Previewable @State var editorText: String = "Preview Text"
+    @Previewable @State var isRunning: Bool = false
+    
+    InputView(editorText: $editorText)
 }
