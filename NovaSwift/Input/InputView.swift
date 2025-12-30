@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct EditorView: View {
+struct InputView: View {
     @Binding var text: String
     
     var body: some View {
@@ -23,5 +23,5 @@ struct EditorView: View {
 
 #Preview {
     @Previewable @State var text: String = "Preview Text"
-    EditorView(text: $text)
+    InputView(text: $text)
 }
