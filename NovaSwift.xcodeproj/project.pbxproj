@@ -6,18 +6,26 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		515D82C12F03FBDD00B0771D /* NovaSwift.icon in Resources */ = {isa = PBXBuildFile; fileRef = 515D82C02F03FBDD00B0771D /* NovaSwift.icon */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXFileReference section */
-		515D82C02F03FBDD00B0771D /* NovaSwift.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = NovaSwift.icon; sourceTree = "<group>"; };
 		517512882F030D9300B4368A /* NovaSwift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NovaSwift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		515D82D52F03FDFB00B0771D /* Exceptions for "NovaSwift" folder in "NovaSwift" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 517512872F030D9300B4368A /* NovaSwift */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5175128A2F030D9300B4368A /* NovaSwift */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				515D82D52F03FDFB00B0771D /* Exceptions for "NovaSwift" folder in "NovaSwift" target */,
+			);
 			path = NovaSwift;
 			sourceTree = "<group>";
 		};
@@ -39,7 +47,6 @@
 			children = (
 				5175128A2F030D9300B4368A /* NovaSwift */,
 				517512892F030D9300B4368A /* Products */,
-				515D82C02F03FBDD00B0771D /* NovaSwift.icon */,
 			);
 			sourceTree = "<group>";
 		};
@@ -115,7 +122,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				515D82C12F03FBDD00B0771D /* NovaSwift.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -257,7 +263,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = NovaSwift;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -266,6 +272,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NovaSwift/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NovaSwift;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -292,7 +299,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = NovaSwift;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -301,6 +308,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NovaSwift/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NovaSwift;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
