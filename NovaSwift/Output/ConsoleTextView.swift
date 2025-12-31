@@ -8,9 +8,25 @@
 import SwiftUI
 import AppKit
 
+/// A SwiftUI wrapper around `NSTextView` designed for displaying read-only console output.
+///
+/// This view configures the text view with a dark theme, monospaced font, and automatic
+/// link detection for file paths (e.g., `script.swift:10:5`).
 struct ConsoleTextView: NSViewRepresentable {
+    // MARK: - Properties
+    
+    /// The read-only text content to display.
     let text: String
     
+    /// The font size for the console text.
+    var fontSize: CGFloat
+    
+    /// The current application theme.
+    var theme: AppTheme
+    
+    // MARK: - NSViewRepresentable
+    
+    /// Creates the `NSScrollView` containing the read-only `NSTextView`.
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
@@ -23,12 +39,12 @@ struct ConsoleTextView: NSViewRepresentable {
         textView.isEditable = false
         textView.isSelectable = true
         textView.isRichText = false
-        textView.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        textView.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
         
-        // Dark Theme
-        let darkBackground = NSColor(red: 0.12, green: 0.12, blue: 0.12, alpha: 1.0)
-        textView.backgroundColor = darkBackground
-        textView.textColor = NSColor(white: 0.8, alpha: 1.0) // Light gray text
+        // Initial Theme
+        let colors = ThemeColors.forTheme(theme)
+        textView.backgroundColor = colors.background
+        textView.textColor = colors.text
         
         // Add padding
         textView.textContainerInset = NSSize(width: 5, height: 10)
@@ -49,43 +65,85 @@ struct ConsoleTextView: NSViewRepresentable {
         return scrollView
     }
     
+    /// Updates the view when SwiftUI state changes.
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
         
+        let colors = ThemeColors.forTheme(theme)
+        
+        // Update colors if changed
+        if textView.backgroundColor != colors.background {
+            textView.backgroundColor = colors.background
+        }
+        if textView.textColor != colors.text {
+            textView.textColor = colors.text
+        }
+        
+        // Update font if needed
+        if textView.font?.pointSize != fontSize {
+            textView.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        }
+        
+        context.coordinator.updateSettings(theme: theme, fontSize: fontSize)
+        
         // Update only if content changed to avoid unnecessary redraws/scroll jumps.
+        // Or if theme changed, we might need to re-apply attributes to ensure text color is correct
+        // because we use NSAttributedString which locks in colors.
+        
         if textView.string != text {
-            // Apply text with link detection
+            // Content changed
             context.coordinator.updateTextWithLinks(textView, text: text)
-            
-            // Auto-scroll logic:
-            if !text.isEmpty {
-                 textView.scrollToEndOfDocument(nil)
-            }
+             // Auto-scroll logic:
+             if !text.isEmpty {
+                  textView.scrollToEndOfDocument(nil)
+             }
+        } else {
+             // Text same, but theme/font might have changed. Re-apply attributes.
+             context.coordinator.updateTextWithLinks(textView, text: text)
         }
     }
     
+    /// Creates the coordinator to handle text delegate methods.
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
     
+    // MARK: - Coordinator
+    
+    /// Coordinating class responsible for handling text updates and link interactions.
     class Coordinator: NSObject, NSTextViewDelegate {
         var parent: ConsoleTextView
+        var currentTheme: AppTheme
+        var currentFontSize: CGFloat
         
         init(_ parent: ConsoleTextView) {
             self.parent = parent
+            self.currentTheme = parent.theme
+            self.currentFontSize = parent.fontSize
         }
         
+        func updateSettings(theme: AppTheme, fontSize: CGFloat) {
+            self.currentTheme = theme
+            self.currentFontSize = fontSize
+        }
+        
+        /// Updates the text view's storage with attributed text, detecting and linking file locations.
+        ///
+        /// - Parameters:
+        ///   - textView: The `NSTextView` to update.
+        ///   - text: The raw string content.
         func updateTextWithLinks(_ textView: NSTextView, text: String) {
             let attributedString = NSMutableAttributedString(string: text)
             let fullRange = NSRange(location: 0, length: text.utf16.count)
+            let colors = ThemeColors.forTheme(currentTheme)
             
             // Default styling
-            attributedString.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular), range: fullRange)
-            attributedString.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: fullRange)
+            attributedString.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: currentFontSize, weight: .regular), range: fullRange)
+            attributedString.addAttribute(.foregroundColor, value: colors.text, range: fullRange)
             
             // Detect patterns: /path/to/script.swift:LINE:COL
             // Regex: [^:]+\.swift:(\d+):(\d+)
-            let pattern = "[^:]+\\.swift:(\\d+):(\\d+)"
+            let pattern = #"[^:]+\.swift:(\d+):(\d+)"#
             if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
                 regex.enumerateMatches(in: text, options: [], range: fullRange) { match, _, _ in
                     guard let match = match, match.numberOfRanges == 3 else { return }
@@ -101,11 +159,13 @@ struct ConsoleTextView: NSViewRepresentable {
                             attributedString.addAttribute(.link, value: url, range: match.range)
                             // Optional: Make it look like a link (blue/underline) or keep it subtle
                             attributedString.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.range)
+                            // Ensure link color is readable against background (standard link blue is usually fine, but let's stick to system default for links)
                         }
                     }
                 }
             }
             
+            // Preserve selection if possible? No, console is usually read-only auto-scroll.
             textView.textStorage?.setAttributedString(attributedString)
         }
     }

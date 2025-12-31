@@ -8,10 +8,27 @@
 import SwiftUI
 import AppKit
 
+/// A SwiftUI wrapper around `NSTextView` that provides basic syntax highlighting for Swift code.
+///
+/// This view supports line numbers via a custom `NSRulerView` and applies color attributes
+/// to keywords, types, strings, comments, and other Swift language constructs.
 struct SyntaxHighlightEditor: NSViewRepresentable {
+    // MARK: - Bindings
+    
+    /// The source code text to be edited.
     @Binding var text: String
-    var fontSize: CGFloat = 14
+    
+    // MARK: - Configuration
+    
+    /// The font size for the editor text.
+    var fontSize: CGFloat
+    
+    /// The current application theme.
+    var theme: AppTheme
 
+    // MARK: - NSViewRepresentable
+    
+    /// Creates the `NSScrollView` containing the configured `NSTextView`.
     func makeNSView(context: Context) -> NSScrollView {
         // We use a native NSScrollView + NSTextView backing because SwiftUI's TextEditor
         // currently lacks support for Attributed Strings (needed for syntax highlighting)
@@ -21,6 +38,9 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
+        
+        // Ensure clipping of subviews (like the ruler) by enabling the layer
+        scrollView.wantsLayer = true
         
         // 1. Setup Ruler for Line Numbers
         scrollView.hasVerticalRuler = true
@@ -34,11 +54,11 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
         textView.isRichText = false
         textView.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
         
-        // Force Dark Background to match the custom color palette
-        let darkBackground = NSColor(red: 0.12, green: 0.12, blue: 0.12, alpha: 1.0) // #1E1E1E
-        textView.backgroundColor = darkBackground
-        textView.textColor = .white
-        textView.insertionPointColor = .white
+        // Apply initial theme
+        let colors = ThemeColors.forTheme(theme)
+        textView.backgroundColor = colors.background
+        textView.textColor = colors.text
+        textView.insertionPointColor = colors.insertionPoint
         
         // Add padding around text
         textView.textContainerInset = NSSize(width: 5, height: 10)
@@ -66,8 +86,31 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
         return scrollView
     }
 
+    /// Updates the view when SwiftUI state changes.
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
+        
+        let colors = ThemeColors.forTheme(theme)
+        
+        // Update basic appearance
+        if textView.backgroundColor != colors.background {
+            textView.backgroundColor = colors.background
+        }
+        if textView.insertionPointColor != colors.insertionPoint {
+            textView.insertionPointColor = colors.insertionPoint
+        }
+        
+        // Update font if needed
+        if textView.font?.pointSize != fontSize {
+            textView.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        }
+        
+        // Pass theme info to ruler
+        if let ruler = nsView.verticalRulerView as? LineNumberRulerView {
+            ruler.theme = theme
+        }
+        
+        context.coordinator.updateTheme(theme: theme, fontSize: fontSize)
         
         if textView.string != text {
             // Preserve cursor position if possible
@@ -78,18 +121,35 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             
             // Refresh ruler
             nsView.verticalRulerView?.needsDisplay = true
+        } else {
+            // Re-highlight if theme/font changed even if text is same
+            context.coordinator.highlightSyntax(in: textView)
+            nsView.verticalRulerView?.needsDisplay = true
         }
     }
 
+    /// Creates the coordinator to handle text delegate methods.
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
 
+    // MARK: - Coordinator
+    
+    /// Coordinating class responsible for handling text changes and applying syntax highlighting.
     class Coordinator: NSObject, NSTextViewDelegate {
         var parent: SyntaxHighlightEditor
+        var currentTheme: AppTheme
+        var currentFontSize: CGFloat
 
         init(_ parent: SyntaxHighlightEditor) {
             self.parent = parent
+            self.currentTheme = parent.theme
+            self.currentFontSize = parent.fontSize
+        }
+        
+        func updateTheme(theme: AppTheme, fontSize: CGFloat) {
+            self.currentTheme = theme
+            self.currentFontSize = fontSize
         }
 
         func textDidChange(_ notification: Notification) {
@@ -104,98 +164,111 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             textView.enclosingScrollView?.verticalRulerView?.needsDisplay = true
         }
         
+        /// Applies syntax highlighting attributes to the entire text view content.
+        ///
+        /// - Parameter textView: The `NSTextView` to highlight.
         func highlightSyntax(in textView: NSTextView) {
             guard let textStorage = textView.textStorage else { return }
             let fullRange = NSRange(location: 0, length: textStorage.length)
             let string = textStorage.string
             
-            // 1. Reset to plain text
-            textStorage.removeAttribute(.foregroundColor, range: fullRange)
-            textStorage.addAttribute(.foregroundColor, value: NSColor.textColor, range: fullRange)
-            textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular), range: fullRange)
+            let colors = ThemeColors.forTheme(currentTheme)
             
-            // Helper to apply regex
-            func apply(_ pattern: String, color: NSColor, fontTrait: NSFontDescriptor.SymbolicTraits? = nil) {
+            // --- Helper: Apply Regex ---
+            func apply(_ pattern: String, color: NSColor, fontTrait: NSFontDescriptor.SymbolicTraits? = nil, range: NSRange) {
                 guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return }
-                regex.enumerateMatches(in: string, options: [], range: fullRange) { match, _, _ in
+                regex.enumerateMatches(in: string, options: [], range: range) { match, _, _ in
                     if let matchRange = match?.range {
                         textStorage.addAttribute(.foregroundColor, value: color, range: matchRange)
                         if let trait = fontTrait, trait.contains(.bold) {
-                            textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .bold), range: matchRange)
+                            textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: currentFontSize, weight: .bold), range: matchRange)
                         }
                     }
                 }
             }
             
-            // --- Colors (Custom Palette) ---
-            // Helper for Hex Colors
-            func color(_ hex: Int) -> NSColor {
-                let r = CGFloat((hex >> 16) & 0xFF) / 255.0
-                let g = CGFloat((hex >> 8) & 0xFF) / 255.0
-                let b = CGFloat(hex & 0xFF) / 255.0
-                return NSColor(red: r, green: g, blue: b, alpha: 1.0)
-            }
-            
-            let defaultColor = color(0xFFFFFF) // White
-            let stringColor  = color(0xFF8170) // Soft Red/Salmon
-            let keywordColor = color(0xDDA0DD) // Light Magenta/Purple
-            let commentColor = color(0x6C7986) // Slate Gray
-            let numberColor  = color(0xD9C97C) // Muted Gold
-            let typeColor    = color(0x91D462) // Light Green
-            let callColor    = color(0x4EB1BA) // Teal/Cyan
-            let attrColor    = color(0xB190F0) // Bright Purple
-            
-            // 1. Reset to plain text (White)
-            textStorage.removeAttribute(.foregroundColor, range: fullRange)
-            textStorage.addAttribute(.foregroundColor, value: defaultColor, range: fullRange)
-            textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular), range: fullRange)
-            let keywords = [
-                "associatedtype", "class", "deinit", "enum", "extension", "fileprivate", "func", "import", "init", "inout", "internal", "let", "open", "operator", "private", "protocol", "public", "static", "struct", "subscript", "typealias", "var",
-                "break", "case", "continue", "default", "defer", "do", "else", "fallthrough", "for", "guard", "if", "in", "repeat", "return", "switch", "where", "while",
-                "as", "Any", "catch", "false", "is", "nil", "rethrows", "super", "self", "Self", "throw", "throws", "true", "try",
-                "async", "await", "actor"
-            ]
-            let keywordPattern = "\\b(" + keywords.joined(separator: "|") + ")\\b"
-            apply(keywordPattern, color: keywordColor, fontTrait: .bold)
-            
-            // 3. Built-in Types (Basic list)
-            let types = [
-                "Int", "Double", "Float", "Bool", "String", "Array", "Dictionary", "Set", "Character", "Data", "Date", "URL", "UUID", "CGFloat", "CGRect", "CGPoint", "CGSize", "Void", "Error", "Result", "OptionSet"
-            ]
-            let typePattern = "\\b(" + types.joined(separator: "|") + ")\\b"
-            apply(typePattern, color: typeColor)
-            
-            // 4. Numbers
-            apply("\\b\\d+(\\.\\d+)?\\b", color: numberColor)
-            
-            // 5. Attributes (@State, @Binding, etc.)
-            apply("@\\w+", color: attrColor)
-            
-            // 6. Function Calls / Definitions (Word followed by '(')
-            // Note: This regex matches the word, then checks for '('.
-            // We iterate manually to only color the word, not the paren.
-            if let regex = try? NSRegularExpression(pattern: "\\b(\\w+)(?=\\()", options: []) {
-                regex.enumerateMatches(in: string, options: [], range: fullRange) { match, _, _ in
-                    if let matchRange = match?.range(at: 1) { // Capture group 1 (the word)
-                        textStorage.addAttribute(.foregroundColor, value: callColor, range: matchRange)
+            // --- Helper: Apply All Code Rules (Keywords, Types, etc.) ---
+            func applyCodeRules(in searchRange: NSRange) {
+                // 1. Keywords
+                let keywords = [
+                    "associatedtype", "class", "deinit", "enum", "extension", "fileprivate", "func", "import", "init", "inout", "internal", "let", "open", "operator", "private", "protocol", "public", "static", "struct", "subscript", "typealias", "var",
+                    "break", "case", "continue", "default", "defer", "do", "else", "fallthrough", "for", "guard", "if", "in", "repeat", "return", "switch", "where", "while",
+                    "as", "Any", "catch", "false", "is", "nil", "rethrows", "super", "self", "Self", "throw", "throws", "true", "try",
+                    "async", "await", "actor"
+                ]
+                // Use raw string for regex
+                let keywordPattern = "\\b(" + keywords.joined(separator: "|") + ")\\b"
+                apply(keywordPattern, color: colors.keyword, fontTrait: .bold, range: searchRange)
+                
+                // 2. Built-in Types
+                let types = [
+                    "Int", "Double", "Float", "Bool", "String", "Array", "Dictionary", "Set", "Character", "Data", "Date", "URL", "UUID", "CGFloat", "CGRect", "CGPoint", "CGSize", "Void", "Error", "Result", "OptionSet"
+                ]
+                let typePattern = "\\b(" + types.joined(separator: "|") + ")\\b"
+                apply(typePattern, color: colors.type, range: searchRange)
+                
+                // 3. Numbers
+                apply(#"\b\d+(\.\d+)?\b"#, color: colors.number, range: searchRange)
+                
+                // 4. Attributes
+                apply(#"@\w+"#, color: colors.attribute, range: searchRange)
+                
+                // 5. Function Calls (Word followed by '(')
+                if let regex = try? NSRegularExpression(pattern: #"\b(\w+)(?=\("#, options: []) {
+                    regex.enumerateMatches(in: string, options: [], range: searchRange) { match, _, _ in
+                        if let matchRange = match?.range(at: 1) {
+                            textStorage.addAttribute(.foregroundColor, value: colors.call, range: matchRange)
+                        }
                     }
                 }
             }
             
-            // 7. Strings (Last, to overwrite keywords inside strings)
-            let stringPattern = "\"(?:\\\\.|[^\\\\\"])*\""
-            apply(stringPattern, color: stringColor)
+            // --- Execution ---
             
-            // 8. Comments (Last, to overwrite everything inside comments)
-            let commentPattern = "//.*"
-            apply(commentPattern, color: commentColor)
+            // 1. Reset to plain text (Default Color)
+            textStorage.removeAttribute(.foregroundColor, range: fullRange)
+            textStorage.addAttribute(.foregroundColor, value: colors.plain, range: fullRange)
+            textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: currentFontSize, weight: .regular), range: fullRange)
+            
+            // 2. Apply Code Rules to the full text
+            applyCodeRules(in: fullRange)
+            
+            // 3. Apply Strings (Overwrites code rules inside strings)
+            // Match quote, then (escaped char OR non-backslash-non-quote), then quote
+            let stringPattern = ##""(?:\\.|[^\\"])*""##
+            apply(stringPattern, color: colors.string, range: fullRange)
+            
+            // 4. Handle String Interpolation: \( ... )
+            // Match literal \( ... then (non-parens OR nested parens) ... then )
+            let interpolationPattern = ##"\\\((?:[^()]|\([^()]*\))*\)"##
+            
+            if let regex = try? NSRegularExpression(pattern: interpolationPattern, options: []) {
+                regex.enumerateMatches(in: string, options: [], range: fullRange) { match, _, _ in
+                    if let matchRange = match?.range {
+                        // Reset color to default (Plain) for the interpolation block
+                        textStorage.addAttribute(.foregroundColor, value: colors.plain, range: matchRange)
+                        textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: currentFontSize, weight: .regular), range: matchRange)
+                        
+                        // Re-apply code highlighting INSIDE the interpolation
+                        applyCodeRules(in: matchRange)
+                    }
+                }
+            }
+            
+            // 5. Comments (Last)
+            let commentPattern = ##"//.*"##
+            apply(commentPattern, color: colors.comment, range: fullRange)
         }
     }
 }
 
 // MARK: - Line Number Ruler
 
+/// A custom `NSRulerView` that draws line numbers corresponding to the text layout.
 class LineNumberRulerView: NSRulerView {
+    /// The current theme to use for drawing.
+    var theme: AppTheme = .dark
+    
     var font: NSFont {
         return .monospacedSystemFont(ofSize: 10, weight: .regular)
     }
@@ -216,6 +289,8 @@ class LineNumberRulerView: NSRulerView {
               let textContainer = textView.textContainer
         else { return }
         
+        let colors = ThemeColors.forTheme(theme)
+        
         // 1. Get the origin of the text textContainer relative to the text view
         // This accounts for textContainerInset (the 10pt top padding we added)
         let textContainerOrigin = textView.textContainerOrigin
@@ -230,13 +305,19 @@ class LineNumberRulerView: NSRulerView {
         var lineNumber = 1
         
         // Calculate the starting line number for the first visible glyph
-        // (This can be slow for huge files, but simple regex count is fast enough for now)
-        let initialString = (textView.string as NSString).substring(to: layoutManager.characterIndexForGlyph(at: glyphIndex))
-        lineNumber += initialString.filter { $0 == "\n" }.count
+        let visibleCharIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
+        let string = textView.string
+        
+        // Optimized newline counting using UTF8 view to avoid string allocation
+        // This is O(N) relative to the scroll position, which is unavoidable without a line cache,
+        // but significantly faster than String(substring).
+        if visibleCharIndex > 0 {
+            lineNumber += string.utf8.prefix(visibleCharIndex).filter { $0 == 10 }.count // 10 is '\n'
+        }
         
         let lineNumberAttributes: [NSAttributedString.Key: Any] = [
             .font: self.font,
-            .foregroundColor: NSColor(white: 0.5, alpha: 1.0) // Gray
+            .foregroundColor: colors.lineNumbers
         ]
         
         while glyphIndex < NSMaxRange(glyphRange) {
