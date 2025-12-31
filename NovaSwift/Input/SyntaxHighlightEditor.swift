@@ -214,7 +214,8 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
                 apply(#"@\w+"#, color: colors.attribute, range: searchRange)
                 
                 // 5. Function Calls (Word followed by '(')
-                if let regex = try? NSRegularExpression(pattern: #"\b(\w+)(?=\("#, options: []) {
+                // Use standard string escaping to ensure compatibility with NSRegularExpression logic used elsewhere
+                if let regex = try? NSRegularExpression(pattern: "\\b(\\w+)(?=\\()", options: []) {
                     regex.enumerateMatches(in: string, options: [], range: searchRange) { match, _, _ in
                         if let matchRange = match?.range(at: 1) {
                             textStorage.addAttribute(.foregroundColor, value: colors.call, range: matchRange)
