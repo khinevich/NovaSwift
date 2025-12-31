@@ -1,0 +1,96 @@
+//
+//  ProjectManager.swift
+//  NovaSwift
+//
+//  Created by Mikhail Khinevich on 31.12.25.
+//
+
+import Foundation
+import SwiftUI
+
+struct FileSystemItem: Identifiable, Hashable {
+    let id = UUID()
+    let name: String
+    let url: URL
+    let isDirectory: Bool
+    var children: [FileSystemItem]?
+}
+
+@Observable
+class ProjectManager {
+    var rootURL: URL?
+    var items: [FileSystemItem] = []
+    
+    func openFolder(_ url: URL) {
+        // Access security scoped resource if needed (for sandboxed apps)
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessing {
+                // We don't stop accessing immediately if we want to read files later, 
+                // but for listing we might need to keep it open or manage permissions carefully.
+                // In a real app, we'd manage scope lifecycle more robustly.
+                // For this listing implementation, we'll stop accessing after listing 
+                // and re-access when reading a specific file.
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        
+        self.rootURL = url
+        self.items = loadContents(of: url)
+    }
+    
+    private func loadContents(of url: URL) -> [FileSystemItem] {
+        let fileManager = FileManager.default
+        
+        // Options: skip hidden files
+        let options: FileManager.DirectoryEnumerationOptions = [.skipsHiddenFiles]
+        
+        do {
+            let contents = try fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: [.isDirectoryKey], options: options)
+            
+            var loadedItems: [FileSystemItem] = []
+            
+            for fileURL in contents {
+                let resourceValues = try? fileURL.resourceValues(forKeys: [.isDirectoryKey])
+                let isDirectory = resourceValues?.isDirectory ?? false
+                
+                var children: [FileSystemItem]? = nil
+                if isDirectory {
+                    children = loadContents(of: fileURL)
+                }
+                
+                loadedItems.append(FileSystemItem(
+                    name: fileURL.lastPathComponent,
+                    url: fileURL,
+                    isDirectory: isDirectory,
+                    children: children
+                ))
+            }
+            
+            // Sort: Directories first, then files. Alphabetical within groups.
+            return loadedItems.sorted {
+                if $0.isDirectory != $1.isDirectory {
+                    return $0.isDirectory
+                }
+                return $0.name.localizedStandardCompare($1.name) == .orderedAscending
+            }
+            
+        } catch {
+            print("Error loading contents of \(url): \(error)")
+            return []
+        }
+    }
+    
+    /// Reads the content of a file, handling security scope.
+    func readFile(_ url: URL) -> String? {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        
+        do {
+            return try String(contentsOf: url, encoding: .utf8)
+        } catch {
+            print("Failed to read file: \(error)")
+            return nil
+        }
+    }
+}

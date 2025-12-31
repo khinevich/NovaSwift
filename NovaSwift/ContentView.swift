@@ -18,8 +18,19 @@ struct ContentView: View {
     /// The central service managing script execution, shared across child views.
     @State private var executor = ScriptExecutor()
     
+    /// The project manager handling file system operations.
+    @State private var projectManager = ProjectManager()
+    
     /// Controls the presentation of the settings sheet.
     @State private var isSettingsPresented = false
+    
+    /// Controls the visibility of the sidebar.
+    @State private var isSidebarVisible = true
+    
+    // MARK: - Editor State
+    // Lifted from InputContainer to allow sharing with Sidebar
+    @State private var editorText: String = ""
+    @State private var fileName: String?
     
     // MARK: - Body
     
@@ -27,17 +38,34 @@ struct ContentView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 HSplitView {
-                    // Left Pane: Input Container
-                    // Manages the code editor and file importing.
-                    InputContainer(executor: executor)
-                        .frame(minWidth: 400, maxWidth: .infinity)
-                        .layoutPriority(1)
+                    // Sidebar Pane
+                    if isSidebarVisible {
+                        SidebarView(
+                            projectManager: projectManager,
+                            selectedFileContent: $editorText,
+                            currentFileName: $fileName
+                        )
+                        .frame(minWidth: 200, maxWidth: 300, maxHeight: .infinity)
+                        .layoutPriority(0)
+                    }
                     
-                    // Right Pane: Output Container
-                    // Manages the console output display and file exporting.
-                    OutputContainer(executor: executor)
-                        .frame(minWidth: 200, maxWidth: .infinity)
+                    // Main Split: Input & Output
+                    HSplitView {
+                        // Input Container
+                        InputContainer(
+                            executor: executor,
+                            editorText: $editorText,
+                            fileName: $fileName
+                        )
+                        .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
                         .layoutPriority(1)
+                        
+                        // Output Container
+                        OutputContainer(executor: executor)
+                            .frame(minWidth: 200, maxWidth: .infinity, maxHeight: .infinity)
+                            .layoutPriority(1)
+                    }
+                    .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .frame(minHeight: 300, maxHeight: .infinity)
                 
@@ -48,6 +76,13 @@ struct ContentView: View {
             }
             .navigationTitle("NovaSwift")
             .toolbar {
+                // Sidebar Toggle (Left side)
+                ToolbarItem(placement: .navigation) {
+                    Button(action: { isSidebarVisible.toggle() }) {
+                        Label("Toggle Sidebar", systemImage: "sidebar.left")
+                    }
+                }
+                
                 ToolbarItem(placement: .primaryAction) {
                     ShareButton(
                         title: "Share",

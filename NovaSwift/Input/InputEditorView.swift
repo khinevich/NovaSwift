@@ -41,5 +41,6 @@ struct InputEditorView: View {
                 .padding(0)
                 .clipped()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

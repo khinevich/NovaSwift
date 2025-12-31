@@ -18,13 +18,15 @@ struct InputContainer: View {
     /// The shared script execution service.
     var executor: ScriptExecutor
     
+    // MARK: - Bindings
+    
+    /// The current source code text (bound to parent state).
+    @Binding var editorText: String
+    
+    /// The name of the currently loaded file (bound to parent state).
+    @Binding var fileName: String?
+    
     // MARK: - Local State
-    
-    /// The current source code text.
-    @State private var editorText: String = ""
-    
-    /// The name of the currently loaded file, if any.
-    @State private var fileName: String?
     
     /// Tracks the presentation of the file importer sheet.
     @State private var isImporting: Bool = false
@@ -90,8 +92,6 @@ struct InputContainer: View {
                 }
                 .controlSize(.large)
             }
-            
-            Divider()
             
             // Editor Area
             InputEditorView(text: $editorText)

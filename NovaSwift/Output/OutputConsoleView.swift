@@ -26,5 +26,6 @@ struct OutputConsoleView: View {
     
     var body: some View {
         ConsoleTextView(text: text, fontSize: fontSize, theme: currentTheme)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

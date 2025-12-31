@@ -60,8 +60,6 @@ struct OutputContainer: View {
                 .controlSize(.large)
             }
             
-            Divider()
-            
             // Output Display
             OutputConsoleView(text: executor.output)
         }
