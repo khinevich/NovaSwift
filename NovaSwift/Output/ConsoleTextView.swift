@@ -147,8 +147,10 @@ struct ConsoleTextView: NSViewRepresentable {
             attributedString.addAttribute(.foregroundColor, value: colors.text, range: fullRange)
             
             // Detect patterns: /path/to/script.swift:LINE:COL
-            // Regex: [^:]+\.swift:(\d+):(\d+)
-            let pattern = #"[^:]+\.swift:(\d+):(\d+)"#
+            // Regex: [^:\n]+\.swift:(\d+):(\d+)
+            // We exclude newlines (\n) to prevent the regex from greedily consuming
+            // previous lines (like JSON output) that don't contain colons.
+            let pattern = #"[^:\n]+\.swift:(\d+):(\d+)"#
             if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
                 regex.enumerateMatches(in: text, options: [], range: fullRange) { match, _, _ in
                     guard let match = match, match.numberOfRanges == 3 else { return }
