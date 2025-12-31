@@ -18,6 +18,9 @@ struct InputContainer: View {
     /// The shared script execution service.
     var executor: ScriptExecutor
     
+    /// The project manager handling file system operations.
+    var projectManager: ProjectManager
+    
     // MARK: - Bindings
     
     /// The current source code text (bound to parent state).
@@ -114,11 +117,7 @@ struct InputContainer: View {
         do {
             guard let selectedFile: URL = try result.get().first else { return }
             
-            if selectedFile.startAccessingSecurityScopedResource() {
-                defer { selectedFile.stopAccessingSecurityScopedResource() }
-                
-                let fileContent = try String(contentsOf: selectedFile, encoding: .utf8)
-                
+            if let fileContent = projectManager.readFile(selectedFile) {
                 Task { @MainActor in
                     editorText = fileContent
                     fileName = selectedFile.lastPathComponent

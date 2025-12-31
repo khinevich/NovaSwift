@@ -8,12 +8,14 @@
 import SwiftUI
 import AppKit
 
+/// Represents the visual theme of the application.
 enum AppTheme: String, CaseIterable, Identifiable {
     case light
     case dark
     
     var id: String { rawValue }
     
+    /// The user-friendly display name of the theme.
     var displayName: String {
         switch self {
         case .light: return "Light"
@@ -22,6 +24,10 @@ enum AppTheme: String, CaseIterable, Identifiable {
     }
 }
 
+/// A collection of colors corresponding to a specific `AppTheme`.
+///
+/// This structure defines the color palette used for syntax highlighting and UI elements
+/// for a given theme.
 struct ThemeColors {
     let background: NSColor
     let text: NSColor
@@ -38,6 +44,10 @@ struct ThemeColors {
     let call: NSColor
     let plain: NSColor
     
+    /// Returns the color palette for the specified theme.
+    ///
+    /// - Parameter theme: The `AppTheme` to get colors for.
+    /// - Returns: A `ThemeColors` instance with the defined palette.
     static func forTheme(_ theme: AppTheme) -> ThemeColors {
         switch theme {
         case .dark:

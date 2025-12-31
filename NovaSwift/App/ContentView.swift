@@ -57,6 +57,7 @@ struct ContentView: View {
                         // Input Container
                         InputContainer(
                             executor: executor,
+                            projectManager: projectManager,
                             editorText: $editorText,
                             fileName: $fileName
                         )

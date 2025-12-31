@@ -16,11 +16,23 @@ struct FileSystemItem: Identifiable, Hashable {
     var children: [FileSystemItem]?
 }
 
+/// A service class responsible for managing file system interactions.
+///
+/// `ProjectManager` handles the loading of directory contents, reading files, and managing
+/// the security-scoped resources required for accessing user-selected folders.
 @Observable
 class ProjectManager {
+    /// The root URL of the currently opened folder.
     var rootURL: URL?
+    
+    /// The list of file system items (files and directories) in the root folder.
     var items: [FileSystemItem] = []
     
+    /// Opens a folder and loads its contents.
+    ///
+    /// This method handles security-scoped resource access for the folder.
+    ///
+    /// - Parameter url: The URL of the folder to open.
     func openFolder(_ url: URL) {
         // Access security scoped resource if needed (for sandboxed apps)
         let accessing = url.startAccessingSecurityScopedResource()

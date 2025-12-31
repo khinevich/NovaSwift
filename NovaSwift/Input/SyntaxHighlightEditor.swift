@@ -166,6 +166,10 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
         
         /// Applies syntax highlighting attributes to the entire text view content.
         ///
+        /// This method resets all text attributes to the plain style and then iteratively applies
+        /// regex-based highlighting rules. It handles nested structures like string interpolation
+        /// by re-applying code rules within the interpolation delimiters.
+        ///
         /// - Parameter textView: The `NSTextView` to highlight.
         func highlightSyntax(in textView: NSTextView) {
             guard let textStorage = textView.textStorage else { return }
@@ -175,6 +179,7 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             let colors = ThemeColors.forTheme(currentTheme)
             
             // --- Helper: Apply Regex ---
+            /// Applies a given regex pattern with a specific color and optional font trait.
             func apply(_ pattern: String, color: NSColor, fontTrait: NSFontDescriptor.SymbolicTraits? = nil, range: NSRange) {
                 guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return }
                 regex.enumerateMatches(in: string, options: [], range: range) { match, _, _ in
@@ -188,8 +193,10 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             }
             
             // --- Helper: Apply All Code Rules (Keywords, Types, etc.) ---
+            /// Applies all standard Swift syntax rules (keywords, types, numbers, etc.) within a given range.
             func applyCodeRules(in searchRange: NSRange) {
                 // 1. Keywords
+                // Matches exact words from the keyword list.
                 let keywords = [
                     "associatedtype", "class", "deinit", "enum", "extension", "fileprivate", "func", "import", "init", "inout", "internal", "let", "open", "operator", "private", "protocol", "public", "static", "struct", "subscript", "typealias", "var",
                     "break", "case", "continue", "default", "defer", "do", "else", "fallthrough", "for", "guard", "if", "in", "repeat", "return", "switch", "where", "while",
@@ -201,6 +208,7 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
                 apply(keywordPattern, color: colors.keyword, fontTrait: .bold, range: searchRange)
                 
                 // 2. Built-in Types
+                // Matches standard Swift types like Int, String, etc.
                 let types = [
                     "Int", "Double", "Float", "Bool", "String", "Array", "Dictionary", "Set", "Character", "Data", "Date", "URL", "UUID", "CGFloat", "CGRect", "CGPoint", "CGSize", "Void", "Error", "Result", "OptionSet"
                 ]
@@ -208,9 +216,11 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
                 apply(typePattern, color: colors.type, range: searchRange)
                 
                 // 3. Numbers
+                // Matches integers and floating point numbers.
                 apply(#"\b\d+(\.\d+)?\b"#, color: colors.number, range: searchRange)
                 
                 // 4. Attributes
+                // Matches @attribute usage (e.g. @State, @Binding).
                 apply(#"@\w+"#, color: colors.attribute, range: searchRange)
                 
                 // 5. Function Calls (Word followed by '(')
@@ -227,6 +237,7 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             // --- Execution ---
             
             // 1. Reset to plain text (Default Color)
+            // It is crucial to clear existing attributes to avoid color bleeding when text is deleted or modified.
             textStorage.removeAttribute(.foregroundColor, range: fullRange)
             textStorage.addAttribute(.foregroundColor, value: colors.plain, range: fullRange)
             textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: currentFontSize, weight: .regular), range: fullRange)
@@ -240,6 +251,8 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             apply(stringPattern, color: colors.string, range: fullRange)
             
             // 4. Handle String Interpolation: \( ... )
+            // This is the most complex part: we find interpolation blocks inside strings
+            // and re-apply code highlighting rules *inside* them.
             // Match literal \( ... then (non-parens OR nested parens) ... then )
             let interpolationPattern = ##"\\\((?:[^()]|\([^()]*\))*\)"##
             
@@ -257,6 +270,9 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             }
             
             // 5. Comments (Last)
+            // Comments should override everything else (strings, keywords, etc.) if they appear last in the logic.
+            // Note: Since we apply strings *after* code rules, strings overwrite keywords.
+            // Comments matching `//` will grab everything to the end of the line.
             let commentPattern = ##"//.*"##
             apply(commentPattern, color: colors.comment, range: fullRange)
         }
@@ -284,6 +300,13 @@ class LineNumberRulerView: NSRulerView {
         fatalError("init(coder:) has not been implemented")
     }
     
+    /// Draws the line numbers in the ruler view.
+    ///
+    /// This method is called by the system when the ruler needs to be redrawn.
+    /// It efficiently calculates which lines are currently visible and draws
+    /// the corresponding line numbers.
+    ///
+    /// - Parameter rect: The dirty rectangle to redraw.
     override func drawHashMarksAndLabels(in rect: NSRect) {
         guard let textView = self.clientView as? NSTextView,
               let layoutManager = textView.layoutManager,

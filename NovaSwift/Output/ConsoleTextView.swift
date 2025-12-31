@@ -129,6 +129,11 @@ struct ConsoleTextView: NSViewRepresentable {
         
         /// Updates the text view's storage with attributed text, detecting and linking file locations.
         ///
+        /// This method performs the following operations:
+        /// 1. Applies default font and text color to the entire range.
+        /// 2. Scans the text for patterns matching Swift file locations (e.g., `File.swift:10:5`).
+        /// 3. Adds link attributes to the matching ranges using a custom `novaswift://` scheme.
+        ///
         /// - Parameters:
         ///   - textView: The `NSTextView` to update.
         ///   - text: The raw string content.

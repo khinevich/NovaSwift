@@ -8,11 +8,32 @@
 import SwiftUI
 internal import UniformTypeIdentifiers
 
+/// A view representing the project's file explorer sidebar.
+///
+/// This view displays the file system hierarchy rooted at the selected folder.
+/// It allows users to browse files and open them in the editor.
+///
+/// - Key Features:
+///   - Displays a folder tree structure.
+///   - Handles file selection and loading content into the editor.
+///   - Provides an interface to open a new root folder.
 struct SidebarView: View {
+    // MARK: - Dependencies
+    
+    /// The project manager responsible for file system data.
     @Bindable var projectManager: ProjectManager
+    
+    // MARK: - Bindings
+    
+    /// The text content of the currently selected file.
     @Binding var selectedFileContent: String
+    
+    /// The name of the currently selected file.
     @Binding var currentFileName: String?
     
+    // MARK: - Local State
+    
+    /// Controls the presentation of the folder importer.
     @State private var isImporterPresented: Bool = false
     
     var body: some View {
