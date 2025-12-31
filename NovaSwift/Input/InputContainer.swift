@@ -45,7 +45,7 @@ struct InputContainer: View {
                 // File Actions
                 ControlGroup {
                     Button(action: { isImporting = true }) {
-                        Label("Import", systemImage: "square.and.arrow.down")
+                        Label("Import", systemImage: "document.badge.plus")
                     }
                     .disabled(executor.isRunning)
                     

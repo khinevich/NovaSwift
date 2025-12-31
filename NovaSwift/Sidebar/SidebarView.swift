@@ -24,9 +24,12 @@ struct SidebarView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 
-                Button(action: { isImporterPresented = true }) {
-                    Label("Open", systemImage: "folder.badge.plus")
+                ControlGroup {
+                    Button(action: { isImporterPresented = true }) {
+                        Label("Open", systemImage: "folder.badge.plus")
+                    }
                 }
+                .controlSize(.large)
             }
             
             if let _ = projectManager.rootURL {

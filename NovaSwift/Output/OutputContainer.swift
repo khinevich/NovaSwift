@@ -53,7 +53,7 @@ struct OutputContainer: View {
                         exportDocument = TextDocument(text: executor.output)
                         isExporting = true
                     }) {
-                        Label("Save", systemImage: "square.and.arrow.down")
+                        Label("Save", systemImage: "tray.and.arrow.down.fill")
                     }
                     .disabled(executor.isRunning || executor.output.isEmpty)
                 }

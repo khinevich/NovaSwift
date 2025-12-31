@@ -24,8 +24,11 @@ struct ContentView: View {
     /// Controls the presentation of the settings sheet.
     @State private var isSettingsPresented = false
     
+    /// Controls the presentation of the info sheet.
+    @State private var isInfoPresented = false
+    
     /// Controls the visibility of the sidebar.
-    @State private var isSidebarVisible = true
+    @State private var isSidebarVisible = false
     
     // MARK: - Editor State
     // Lifted from InputContainer to allow sharing with Sidebar
@@ -100,13 +103,16 @@ struct ContentView: View {
                 }
                 
                 ToolbarItem(placement: .primaryAction) {
-                    Button(action: {}) {
+                    Button(action: { isInfoPresented = true }) {
                         Label("Info", systemImage: "info.circle")
                     }
                 }
             }
             .sheet(isPresented: $isSettingsPresented) {
                 SettingsView()
+            }
+            .sheet(isPresented: $isInfoPresented) {
+                InfoView()
             }
         }
     }
