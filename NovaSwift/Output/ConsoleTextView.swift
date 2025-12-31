@@ -24,8 +24,14 @@ struct ConsoleTextView: NSViewRepresentable {
         textView.isSelectable = true
         textView.isRichText = false
         textView.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
-        textView.backgroundColor = .clear
-        textView.textColor = .secondaryLabelColor
+        
+        // Dark Theme
+        let darkBackground = NSColor(red: 0.12, green: 0.12, blue: 0.12, alpha: 1.0)
+        textView.backgroundColor = darkBackground
+        textView.textColor = NSColor(white: 0.8, alpha: 1.0) // Light gray text
+        
+        // Add padding
+        textView.textContainerInset = NSSize(width: 5, height: 10)
         
         // Delegate is needed to intercept link clicks
         textView.delegate = context.coordinator

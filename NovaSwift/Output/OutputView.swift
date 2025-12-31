@@ -12,7 +12,6 @@ struct OutputView: View {
         
     var body: some View {
         ConsoleTextView(text: output)
-            .background(Color.black.opacity(0.03))
     }
 }
 

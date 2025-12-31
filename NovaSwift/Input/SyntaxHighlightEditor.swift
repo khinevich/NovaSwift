@@ -31,12 +31,21 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
         let rulerView = LineNumberRulerView(textView: textView)
         scrollView.verticalRulerView = rulerView
         
-        textView.isRichText = false // Maintain plain text data model, but allowing visual attributes.
+        textView.isRichText = false
         textView.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
-        textView.backgroundColor = .textBackgroundColor
-        textView.textColor = .textColor
+        
+        // Force Dark Background to match the custom color palette
+        let darkBackground = NSColor(red: 0.12, green: 0.12, blue: 0.12, alpha: 1.0) // #1E1E1E
+        textView.backgroundColor = darkBackground
+        textView.textColor = .white
+        textView.insertionPointColor = .white
+        
+        // Add padding around text
+        textView.textContainerInset = NSSize(width: 5, height: 10)
+        
         textView.allowsUndo = true
         
+        // Fixing doublequotes for coding:
         // Disable smart substitutions to prevent "magic quotes" breaking code syntax.
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
@@ -207,54 +216,65 @@ class LineNumberRulerView: NSRulerView {
               let textContainer = textView.textContainer
         else { return }
         
-        let relativePoint = self.convert(NSPoint.zero, from: textView)
-        let lineNumberAttributes: [NSAttributedString.Key: Any] = [
-            .font: self.font,
-            .foregroundColor: NSColor.secondaryLabelColor
-        ]
+        // 1. Get the origin of the text textContainer relative to the text view
+        // This accounts for textContainerInset (the 10pt top padding we added)
+        let textContainerOrigin = textView.textContainerOrigin
         
         let visibleRect = scrollView?.documentVisibleRect ?? .zero
-        let range = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
         
-        var glyphIndex = range.location
+        // 2. Find the range of glyphs currently visible
+        // We look a bit outside the visible rect to ensure smooth scrolling
+        let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect.offsetBy(dx: -textContainerOrigin.x, dy: -textContainerOrigin.y), in: textContainer)
+        
+        var glyphIndex = glyphRange.location
         var lineNumber = 1
         
-        // Find line number for first visible glyph
+        // Calculate the starting line number for the first visible glyph
+        // (This can be slow for huge files, but simple regex count is fast enough for now)
         let initialString = (textView.string as NSString).substring(to: layoutManager.characterIndexForGlyph(at: glyphIndex))
         lineNumber += initialString.filter { $0 == "\n" }.count
         
-        while glyphIndex < NSMaxRange(range) {
+        let lineNumberAttributes: [NSAttributedString.Key: Any] = [
+            .font: self.font,
+            .foregroundColor: NSColor(white: 0.5, alpha: 1.0) // Gray
+        ]
+        
+        while glyphIndex < NSMaxRange(glyphRange) {
             let characterIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
             let lineRange = (textView.string as NSString).lineRange(for: NSRange(location: characterIndex, length: 0))
             let lineGlyphRange = layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
             
-            var lineRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: nil)
+            // Get rect for the line fragment in container coordinates
+            let lineRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: nil)
             
-            // Adjust for scrolling
-            lineRect.origin.y += relativePoint.y
+            // 3. Convert to View Coordinates (add padding/inset)
+            let viewRectY = lineRect.minY + textContainerOrigin.y
             
-            // Draw line number
-            let labelText = "\(lineNumber)" as NSString
-            let labelSize = labelText.size(withAttributes: lineNumberAttributes)
-            
-            // Right align
-            let drawPoint = NSPoint(
-                x: self.ruleThickness - labelSize.width - 5,
-                y: lineRect.minY + (lineRect.height - labelSize.height) / 2
-            )
-            
-            labelText.draw(at: drawPoint, withAttributes: lineNumberAttributes)
+            // Draw only if visible (optimization)
+            if viewRectY >= visibleRect.minY - 20 && viewRectY <= visibleRect.maxY + 20 {
+                let labelText = "\(lineNumber)" as NSString
+                let labelSize = labelText.size(withAttributes: lineNumberAttributes)
+                
+                // Center vertically within the line height
+                let drawPoint = NSPoint(
+                    x: self.ruleThickness - labelSize.width - 8,
+                    y: viewRectY + (lineRect.height - labelSize.height) / 2
+                )
+                
+                labelText.draw(at: drawPoint, withAttributes: lineNumberAttributes)
+            }
             
             lineNumber += 1
             glyphIndex = NSMaxRange(lineGlyphRange)
             
-            // Handle empty last line
-            if glyphIndex == textView.layoutManager?.numberOfGlyphs && textView.string.hasSuffix("\n") {
+            // Handle the "phantom" empty last line if text ends in newline
+            if glyphIndex == layoutManager.numberOfGlyphs && textView.string.hasSuffix("\n") {
                  let labelText = "\(lineNumber)" as NSString
                  let labelSize = labelText.size(withAttributes: lineNumberAttributes)
+                 // Position it one line height below the last real line
                  let drawPoint = NSPoint(
-                     x: self.ruleThickness - labelSize.width - 5,
-                     y: lineRect.maxY + (lineRect.height - labelSize.height) / 2
+                     x: self.ruleThickness - labelSize.width - 8,
+                     y: viewRectY + lineRect.height + (lineRect.height - labelSize.height) / 2
                  )
                  labelText.draw(at: drawPoint, withAttributes: lineNumberAttributes)
             }

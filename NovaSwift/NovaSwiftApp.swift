@@ -13,5 +13,6 @@ struct NovaSwiftApp: App {
         WindowGroup {
             ContentView()
         }
+        .windowToolbarStyle(.unified)
     }
 }
