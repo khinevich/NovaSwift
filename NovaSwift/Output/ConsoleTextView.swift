@@ -43,7 +43,7 @@ struct ConsoleTextView: NSViewRepresentable {
         
         // Initial Theme
         let colors = ThemeColors.forTheme(theme)
-        textView.backgroundColor = colors.background
+        textView.backgroundColor = colors.consoleBackground
         textView.textColor = colors.text
         
         // Add padding
@@ -72,8 +72,8 @@ struct ConsoleTextView: NSViewRepresentable {
         let colors = ThemeColors.forTheme(theme)
         
         // Update colors if changed
-        if textView.backgroundColor != colors.background {
-            textView.backgroundColor = colors.background
+        if textView.backgroundColor != colors.consoleBackground {
+            textView.backgroundColor = colors.consoleBackground
         }
         if textView.textColor != colors.text {
             textView.textColor = colors.text

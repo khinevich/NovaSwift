@@ -56,7 +56,7 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
         
         // Apply initial theme
         let colors = ThemeColors.forTheme(theme)
-        textView.backgroundColor = colors.background
+        textView.backgroundColor = colors.editorBackground
         textView.textColor = colors.text
         textView.insertionPointColor = colors.insertionPoint
         
@@ -93,8 +93,8 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
         let colors = ThemeColors.forTheme(theme)
         
         // Update basic appearance
-        if textView.backgroundColor != colors.background {
-            textView.backgroundColor = colors.background
+        if textView.backgroundColor != colors.editorBackground {
+            textView.backgroundColor = colors.editorBackground
         }
         if textView.insertionPointColor != colors.insertionPoint {
             textView.insertionPointColor = colors.insertionPoint

@@ -29,7 +29,8 @@ enum AppTheme: String, CaseIterable, Identifiable {
 /// This structure defines the color palette used for syntax highlighting and UI elements
 /// for a given theme.
 struct ThemeColors {
-    let background: NSColor
+    let editorBackground: NSColor
+    let consoleBackground: NSColor
     let text: NSColor
     let insertionPoint: NSColor
     let lineNumbers: NSColor
@@ -52,7 +53,8 @@ struct ThemeColors {
         switch theme {
         case .dark:
             return ThemeColors(
-                background: NSColor(red: 0.12, green: 0.12, blue: 0.12, alpha: 1.0), // #1E1E1E
+                editorBackground: NSColor(red: 0.12, green: 0.12, blue: 0.12, alpha: 1.0), // #1E1E1E
+                consoleBackground: .black,
                 text: .white,
                 insertionPoint: .white,
                 lineNumbers: NSColor(white: 0.5, alpha: 1.0),
@@ -67,7 +69,8 @@ struct ThemeColors {
             )
         case .light:
             return ThemeColors(
-                background: .white,
+                editorBackground: .white,
+                consoleBackground: .white,
                 text: .black,
                 insertionPoint: .black,
                 lineNumbers: NSColor(white: 0.6, alpha: 1.0),
