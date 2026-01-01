@@ -16,9 +16,9 @@ struct SettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Appearance
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text("Appearance")
-                    .font(.headline)
+                    .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(.secondary)
                 
                 Toggle("Dark Mode", isOn: Binding(
@@ -26,26 +26,27 @@ struct SettingsView: View {
                     set: { currentTheme = $0 ? .dark : .light }
                 ))
                 .toggleStyle(.switch)
+                .font(.system(size: 18))
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 12)
+            .padding(.horizontal, 24)
+            .padding(.top, 24)
+            .padding(.bottom, 16)
             
             Divider()
             
             // Editor Text Size
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text("Editor Text Size")
-                    .font(.headline)
+                    .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(.secondary)
                 
                 HStack {
                     Text("\(Int(fontSize)) pt")
-                        .monospacedDigit()
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(.tertiary)
-                        .cornerRadius(6)
+                        .font(.system(size: 18, design: .monospaced))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.secondary.opacity(0.1))
+                        .cornerRadius(8)
                     
                     Spacer()
                     
@@ -54,35 +55,37 @@ struct SettingsView: View {
                             if fontSize > 8 { fontSize -= 1 }
                         }) {
                             Image(systemName: "minus")
-                                .frame(width: 24, height: 24)
+                                .font(.system(size: 18))
+                                .frame(width: 32, height: 32)
                         }
                         .keyboardShortcut("-", modifiers: .command)
                         
                         Divider()
-                            .frame(height: 20)
+                            .frame(height: 24)
                         
                         Button(action: {
                             if fontSize < 48 { fontSize += 1 }
                         }) {
                             Image(systemName: "plus")
-                                .frame(width: 24, height: 24)
+                                .font(.system(size: 18))
+                                .frame(width: 32, height: 32)
                         }
                         .keyboardShortcut("+", modifiers: .command)
                     }
                     .buttonStyle(.borderless)
                     .background(.background)
-                    .cornerRadius(6)
+                    .cornerRadius(8)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 6)
+                        RoundedRectangle(cornerRadius: 8)
                             .stroke(.tertiary, lineWidth: 1)
                     )
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            .padding(.bottom, 20)
+            .padding(.horizontal, 24)
+            .padding(.top, 16)
+            .padding(.bottom, 24)
         }
-        .frame(width: 300)
+        .frame(width: 240)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Done") {

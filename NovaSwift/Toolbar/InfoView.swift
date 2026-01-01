@@ -29,11 +29,10 @@ struct InfoView: View {
             
             VStack(spacing: 8) {
                 Text("NovaSwift")
-                    .font(.title)
-                    .fontWeight(.bold)
+                    .font(.system(size: 40, weight: .bold)) // ~1.5x Title
                 
                 Text("Version 1.0.0")
-                    .font(.body)
+                    .font(.system(size: 24)) // ~1.5x Body
                     .foregroundStyle(.secondary)
             }
             
@@ -42,18 +41,18 @@ struct InfoView: View {
             VStack(spacing: 12) {
                 Text("A lightweight Swift script runner and editor for macOS.")
                     .multilineTextAlignment(.center)
-                    .font(.body)
+                    .font(.system(size: 24)) // ~1.5x Body
                     .fixedSize(horizontal: false, vertical: true)
                 
                 Text("Created by Mikhail Khinevich")
-                    .font(.footnote)
+                    .font(.system(size: 18)) // ~1.5x Footnote
                     .foregroundStyle(.secondary)
                 
                 HStack(spacing: 16) {
                     Link("LinkedIn", destination: URL(string: "https://www.linkedin.com/in/mikhail-khinevich-a56399219/")!)
                     Link("GitHub", destination: URL(string: "https://github.com/khinevich")!)
                 }
-                .font(.footnote)
+                .font(.system(size: 18)) // ~1.5x Footnote
             }
             .padding(.horizontal, 24)
             
@@ -62,10 +61,11 @@ struct InfoView: View {
             Button("Close") {
                 dismiss()
             }
+            .font(.title3)
             .keyboardShortcut(.defaultAction)
             .padding(.bottom, 20)
         }
-        .frame(width: 350, height: 400)
+        .frame(width: 450, height: 500)
     }
 }
 

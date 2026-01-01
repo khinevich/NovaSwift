@@ -56,10 +56,24 @@ struct SidebarView: View {
             if let _ = projectManager.rootURL {
                 List(projectManager.items, children: \.children) { item in
                     HStack {
-                        Image(systemName: item.isDirectory ? "folder.fill" : "doc.text")
-                            .foregroundColor(item.isDirectory ? .blue : .secondary)
+                        if item.isDirectory {
+                            Image(systemName: "folder.fill")
+                                .foregroundColor(.blue)
+                        } else {
+                            Image(systemName: "swift")
+                                .foregroundColor(.orange)
+                        }
+                        
                         Text(item.name)
+                            .foregroundColor(currentFileName == item.name ? .primary : .primary)
+                        Spacer()
                     }
+                    .padding(.vertical, 2)
+                    .padding(.horizontal, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(currentFileName == item.name ? Color.blue.opacity(0.2) : Color.clear)
+                    )
                     .contentShape(Rectangle())
                     .onTapGesture {
                         if !item.isDirectory {
