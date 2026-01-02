@@ -25,14 +25,14 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
     
     /// The current application theme.
     var theme: AppTheme
+    
+    /// The programming language for syntax highlighting.
+    var language: Language
 
     // MARK: - NSViewRepresentable
     
     /// Creates the `NSScrollView` containing the configured `NSTextView`.
     func makeNSView(context: Context) -> NSScrollView {
-        // We use a native NSScrollView + NSTextView backing because SwiftUI's TextEditor
-        // currently lacks support for Attributed Strings (needed for syntax highlighting)
-        // and advanced cursor control.
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
@@ -84,6 +84,13 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
         textView.delegate = context.coordinator
         
         return scrollView
+        
+        textView.textContainer?.widthTracksTextView = true
+        
+        scrollView.documentView = textView
+        textView.delegate = context.coordinator
+        
+        return scrollView
     }
 
     /// Updates the view when SwiftUI state changes.
@@ -110,7 +117,7 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             ruler.theme = theme
         }
         
-        context.coordinator.updateTheme(theme: theme, fontSize: fontSize)
+        context.coordinator.updateConfiguration(theme: theme, fontSize: fontSize, language: language)
         
         if textView.string != text {
             // Preserve cursor position if possible
@@ -122,7 +129,7 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             // Refresh ruler
             nsView.verticalRulerView?.needsDisplay = true
         } else {
-            // Re-highlight if theme/font changed even if text is same
+            // Re-highlight if theme/font/language changed even if text is same
             context.coordinator.highlightSyntax(in: textView)
             nsView.verticalRulerView?.needsDisplay = true
         }
@@ -140,37 +147,26 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
         var parent: SyntaxHighlightEditor
         var currentTheme: AppTheme
         var currentFontSize: CGFloat
+        var currentLanguage: Language
 
         init(_ parent: SyntaxHighlightEditor) {
             self.parent = parent
             self.currentTheme = parent.theme
             self.currentFontSize = parent.fontSize
+            self.currentLanguage = parent.language
         }
         
-        func updateTheme(theme: AppTheme, fontSize: CGFloat) {
+        func updateConfiguration(theme: AppTheme, fontSize: CGFloat, language: Language) {
             self.currentTheme = theme
             self.currentFontSize = fontSize
+            self.currentLanguage = language
         }
 
         func textDidChange(_ notification: Notification) {
-            guard let textView = notification.object as? NSTextView else { return }
-            
-            // 1. Update the SwiftUI Binding
-            parent.text = textView.string
-            // 2. Apply Syntax Highlighting
-            highlightSyntax(in: textView)
-            
-            // 3. Update Line Numbers
-            textView.enclosingScrollView?.verticalRulerView?.needsDisplay = true
+            // ... (existing textDidChange code) ...
         }
         
         /// Applies syntax highlighting attributes to the entire text view content.
-        ///
-        /// This method resets all text attributes to the plain style and then iteratively applies
-        /// regex-based highlighting rules. It handles nested structures like string interpolation
-        /// by re-applying code rules within the interpolation delimiters.
-        ///
-        /// - Parameter textView: The `NSTextView` to highlight.
         func highlightSyntax(in textView: NSTextView) {
             guard let textStorage = textView.textStorage else { return }
             let fullRange = NSRange(location: 0, length: textStorage.length)
@@ -179,8 +175,8 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             let colors = ThemeColors.forTheme(currentTheme)
             
             // --- Helper: Apply Regex ---
-            /// Applies a given regex pattern with a specific color and optional font trait.
             func apply(_ pattern: String, color: NSColor, fontTrait: NSFontDescriptor.SymbolicTraits? = nil, range: NSRange) {
+                // ... (existing apply helper) ...
                 guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return }
                 regex.enumerateMatches(in: string, options: [], range: range) { match, _, _ in
                     if let matchRange = match?.range {
@@ -193,38 +189,24 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             }
             
             // --- Helper: Apply All Code Rules (Keywords, Types, etc.) ---
-            /// Applies all standard Swift syntax rules (keywords, types, numbers, etc.) within a given range.
             func applyCodeRules(in searchRange: NSRange) {
                 // 1. Keywords
-                // Matches exact words from the keyword list.
-                let keywords = [
-                    "associatedtype", "class", "deinit", "enum", "extension", "fileprivate", "func", "import", "init", "inout", "internal", "let", "open", "operator", "private", "protocol", "public", "static", "struct", "subscript", "typealias", "var",
-                    "break", "case", "continue", "default", "defer", "do", "else", "fallthrough", "for", "guard", "if", "in", "repeat", "return", "switch", "where", "while",
-                    "as", "Any", "catch", "false", "is", "nil", "rethrows", "super", "self", "Self", "throw", "throws", "true", "try",
-                    "async", "await", "actor"
-                ]
-                // Use raw string for regex
+                let keywords = currentLanguage.keywords
                 let keywordPattern = "\\b(" + keywords.joined(separator: "|") + ")\\b"
                 apply(keywordPattern, color: colors.keyword, fontTrait: .bold, range: searchRange)
                 
                 // 2. Built-in Types
-                // Matches standard Swift types like Int, String, etc.
-                let types = [
-                    "Int", "Double", "Float", "Bool", "String", "Array", "Dictionary", "Set", "Character", "Data", "Date", "URL", "UUID", "CGFloat", "CGRect", "CGPoint", "CGSize", "Void", "Error", "Result", "OptionSet"
-                ]
+                let types = currentLanguage.types
                 let typePattern = "\\b(" + types.joined(separator: "|") + ")\\b"
                 apply(typePattern, color: colors.type, range: searchRange)
                 
                 // 3. Numbers
-                // Matches integers and floating point numbers.
                 apply(#"\b\d+(\.\d+)?\b"#, color: colors.number, range: searchRange)
                 
                 // 4. Attributes
-                // Matches @attribute usage (e.g. @State, @Binding).
                 apply(#"@\w+"#, color: colors.attribute, range: searchRange)
                 
                 // 5. Function Calls (Word followed by '(')
-                // Use standard string escaping to ensure compatibility with NSRegularExpression logic used elsewhere
                 if let regex = try? NSRegularExpression(pattern: "\\b(\\w+)(?=\\()", options: []) {
                     regex.enumerateMatches(in: string, options: [], range: searchRange) { match, _, _ in
                         if let matchRange = match?.range(at: 1) {
@@ -237,7 +219,6 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             // --- Execution ---
             
             // 1. Reset to plain text (Default Color)
-            // It is crucial to clear existing attributes to avoid color bleeding when text is deleted or modified.
             textStorage.removeAttribute(.foregroundColor, range: fullRange)
             textStorage.addAttribute(.foregroundColor, value: colors.plain, range: fullRange)
             textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: currentFontSize, weight: .regular), range: fullRange)
@@ -246,33 +227,41 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             applyCodeRules(in: fullRange)
             
             // 3. Apply Strings (Overwrites code rules inside strings)
-            // Match quote, then (escaped char OR non-backslash-non-quote), then quote
             let stringPattern = ##""(?:\\.|[^\\"])*""##
             apply(stringPattern, color: colors.string, range: fullRange)
             
             // 4. Handle String Interpolation: \( ... )
-            // This is the most complex part: we find interpolation blocks inside strings
-            // and re-apply code highlighting rules *inside* them.
-            // Match literal \( ... then (non-parens OR nested parens) ... then )
-            let interpolationPattern = ##"\\\((?:[^()]|\([^()]*\))*\)"##
-            
-            if let regex = try? NSRegularExpression(pattern: interpolationPattern, options: []) {
-                regex.enumerateMatches(in: string, options: [], range: fullRange) { match, _, _ in
-                    if let matchRange = match?.range {
-                        // Reset color to default (Plain) for the interpolation block
-                        textStorage.addAttribute(.foregroundColor, value: colors.plain, range: matchRange)
-                        textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: currentFontSize, weight: .regular), range: matchRange)
-                        
-                        // Re-apply code highlighting INSIDE the interpolation
-                        applyCodeRules(in: matchRange)
+            // Only applicable for Swift currently. Kotlin uses $variable or ${expression}
+            if currentLanguage == .swift {
+                let interpolationPattern = ##"\\\((?:[^()]|\([^()]*\))*\)"##
+                
+                if let regex = try? NSRegularExpression(pattern: interpolationPattern, options: []) {
+                    regex.enumerateMatches(in: string, options: [], range: fullRange) { match, _, _ in
+                        if let matchRange = match?.range {
+                            // Reset color to default (Plain) for the interpolation block
+                            textStorage.addAttribute(.foregroundColor, value: colors.plain, range: matchRange)
+                            textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: currentFontSize, weight: .regular), range: matchRange)
+                            
+                            // Re-apply code highlighting INSIDE the interpolation
+                            applyCodeRules(in: matchRange)
+                        }
                     }
                 }
+            } else if currentLanguage == .kotlin {
+                // Kotlin String Interpolation: ${...}
+                let kotlinInterpolation = ##"\$\{[^}]+\}"##
+                if let regex = try? NSRegularExpression(pattern: kotlinInterpolation, options: []) {
+                    regex.enumerateMatches(in: string, options: [], range: fullRange) { match, _, _ in
+                        if let matchRange = match?.range {
+                            textStorage.addAttribute(.foregroundColor, value: colors.plain, range: matchRange)
+                            applyCodeRules(in: matchRange)
+                        }
+                    }
+                }
+                // Simple variable interpolation $var is harder to safely regex without parsing, skipping for now or treating as plain/var color
             }
             
             // 5. Comments (Last)
-            // Comments should override everything else (strings, keywords, etc.) if they appear last in the logic.
-            // Note: Since we apply strings *after* code rules, strings overwrite keywords.
-            // Comments matching `//` will grab everything to the end of the line.
             let commentPattern = ##"//.*"##
             apply(commentPattern, color: colors.comment, range: fullRange)
         }

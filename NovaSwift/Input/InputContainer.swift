@@ -34,6 +34,14 @@ struct InputContainer: View {
     /// Tracks the presentation of the file importer sheet.
     @State private var isImporting: Bool = false
     
+    // MARK: - Computed Properties
+    
+    /// Determines the language based on the current file name.
+    private var currentLanguage: Language {
+        guard let fileName = fileName else { return .swift }
+        return Language.from(fileName: fileName)
+    }
+    
     // MARK: - Body
     
     var body: some View {
@@ -65,7 +73,7 @@ struct InputContainer: View {
                 Spacer()
                 
                 // File Name Display
-                Text(fileName ?? "Untitled")
+                Text(fileName ?? "Untitled (\(currentLanguage.displayName))")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: 200)
@@ -77,7 +85,7 @@ struct InputContainer: View {
                 // Execution Control
                 ControlGroup {
                     Button(action: {
-                        executor.execute(editorText)
+                        executor.execute(editorText, language: currentLanguage)
                     }) {
                         Label("Run", systemImage: "play.fill")
                             .foregroundStyle(.green)
@@ -97,11 +105,11 @@ struct InputContainer: View {
             }
             
             // Editor Area
-            InputEditorView(text: $editorText)
+            InputEditorView(text: $editorText, language: currentLanguage)
         }
         .fileImporter(
             isPresented: $isImporting,
-            allowedContentTypes: [.swiftSource, .plainText],
+            allowedContentTypes: [.swiftSource, .plainText, UTType(filenameExtension: "kts")!],
             allowsMultipleSelection: false
         ) { result in
             importFile(result: result)

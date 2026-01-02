@@ -17,6 +17,9 @@ struct InputEditorView: View {
     /// A binding to the text content being edited.
     @Binding var text: String
     
+    /// The language of the code being edited.
+    var language: Language = .swift
+    
     // MARK: - Settings
     
     @AppStorage("appTheme") private var currentTheme: AppTheme = .dark
@@ -37,7 +40,7 @@ struct InputEditorView: View {
                     .zIndex(1)
             }
             
-            SyntaxHighlightEditor(text: $text, fontSize: fontSize, theme: currentTheme)
+            SyntaxHighlightEditor(text: $text, fontSize: fontSize, theme: currentTheme, language: language)
                 .padding(0)
                 .clipped()
         }

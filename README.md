@@ -1,10 +1,18 @@
 # NovaSwift
 
-Native macOS integrated development environment (IDE) specifically built for writing and executing Swift scripts with high performance and a modern user interface.
+Native macOS integrated development environment (IDE) specifically built for writing and executing Swift and Kotlin scripts with high performance and a modern user interface.
 
 ![NovaSwift Logo](NovaSwift.png)
 
 ## Getting Started
+
+### Prerequisites
+
+*   **Swift:** Pre-installed on macOS.
+*   **Kotlin:** To run Kotlin scripts (`.kts`), you must have the Kotlin compiler installed.
+    ```bash
+    brew install kotlin
+    ```
 
 ### Running the Application
 
@@ -78,3 +86,11 @@ The repository includes several sample scripts in `TestScripts/` to verify IDE f
        * Purpose: Exit code and crash handling test.
        * Features: Compiles successfully but crashes at runtime (Index out of bounds).
        * Use case: Verify your tool correctly identifies a non-zero exit code and displays runtime errors (stderr).
+
+6. **(New) Kotlin Test:** Create a file named `hello.kts`:
+   ```kotlin
+   println("Hello from Kotlin!")
+   val list = listOf(1, 2, 3)
+   list.forEach { println("Item: $it") }
+   ```
+   *   **Use case:** Import this file into NovaSwift to verify Kotlin syntax highlighting and execution (ensure `kotlinc` is installed).

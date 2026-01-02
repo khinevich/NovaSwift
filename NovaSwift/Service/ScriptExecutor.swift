@@ -34,17 +34,12 @@ class ScriptExecutor {
     
     // MARK: - Public Methods
     
-    /// Executes the provided Swift source code string.
-    /// 
-    /// This method performs the following steps:
-    /// 1. Resets the current state (`output`, `exitCode`, `isRunning`).
-    /// 2. Writes the script to a temporary file.
-    /// 3. Spawns a subprocess using `/usr/bin/env swift`.
-    /// 4. Captures stdout and stderr in real-time, handling UTF-8 buffering.
-    /// 5. Updates the `output` property on the Main Actor as data arrives.
-    /// 
-    /// - Parameter script: The Swift source code to execute.
-    func execute(_ script: String) {
+    /// Executes the provided source code string.
+    ///
+    /// - Parameters:
+    ///   - script: The source code to execute.
+    ///   - language: The programming language of the script.
+    func execute(_ script: String, language: Language = .swift) {
         // Cancel any previous execution
         stop()
         
@@ -56,7 +51,8 @@ class ScriptExecutor {
         executionTask = Task {
             // 1. Write Script to Disk
             let tempDirectory = FileManager.default.temporaryDirectory
-            let scriptPath = tempDirectory.appending(path: "script-\(UUID().uuidString).swift")
+            let fileName = "script-\(UUID().uuidString).\(language.fileExtension)"
+            let scriptPath = tempDirectory.appending(path: fileName)
             
             do {
                 try script.write(to: scriptPath, atomically: true, encoding: .utf8)
@@ -67,9 +63,15 @@ class ScriptExecutor {
             }
             
             // 2. Configure the Process
+            guard let executableURL = findExecutable(named: language.executableName) else {
+                appendOutput("Error: Could not find executable for '\(language.executableName)'. Please ensure it is installed and in your PATH.\n")
+                finish(with: -1)
+                return
+            }
+            
             let newProcess = Process()
-            newProcess.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
-            newProcess.arguments = [scriptPath.path]
+            newProcess.executableURL = executableURL
+            newProcess.arguments = language.executionArguments(for: scriptPath.path)
             
             // 3. Setup Pipes
             let pipe = Pipe()
@@ -147,6 +149,42 @@ class ScriptExecutor {
                 finish(with: -1)
             }
         }
+    }
+    
+    private func findExecutable(named name: String) -> URL? {
+        // Common paths to search
+        let paths = [
+            "/usr/bin/\(name)",
+            "/usr/local/bin/\(name)",
+            "/opt/homebrew/bin/\(name)",
+            "/bin/\(name)"
+        ]
+        
+        for path in paths {
+            if FileManager.default.fileExists(atPath: path) {
+                return URL(fileURLWithPath: path)
+            }
+        }
+        
+        // Fallback: try `which` command
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+        process.arguments = [name]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        
+        do {
+            try process.run()
+            process.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines), !path.isEmpty {
+                return URL(fileURLWithPath: path)
+            }
+        } catch {
+            return nil
+        }
+        
+        return nil
     }
     
     /// Stops the currently running script, if any.
