@@ -18,6 +18,9 @@ struct InputEditorView: View {
     /// Changes here are propagated back to the parent container.
     @Binding var text: String
     
+    /// The selected range of the text (cursor position).
+    @Binding var selectedRange: NSRange
+    
     /// The language of the code being edited.
     ///
     /// This property determines the syntax highlighting rules applied by the editor.
@@ -49,7 +52,7 @@ struct InputEditorView: View {
             }
             
             // The core editor component handling text input and syntax highlighting.
-            SyntaxHighlightEditor(text: $text, fontSize: fontSize, theme: currentTheme, language: language)
+            SyntaxHighlightEditor(text: $text, selectedRange: $selectedRange, fontSize: fontSize, theme: currentTheme, language: language)
                 .padding(0)
                 .clipped()
         }

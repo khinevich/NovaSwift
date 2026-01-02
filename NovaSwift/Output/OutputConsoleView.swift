@@ -15,7 +15,7 @@ struct OutputConsoleView: View {
     // MARK: - Properties
     
     /// The text content to display in the console.
-    let text: String
+    let text: AttributedString
     
     // MARK: - Settings
     
@@ -25,7 +25,7 @@ struct OutputConsoleView: View {
     // MARK: - Body
     
     var body: some View {
-        ConsoleTextView(text: text, fontSize: fontSize, theme: currentTheme)
+        ConsoleTextView(attributedText: text, fontSize: fontSize, theme: currentTheme)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

@@ -16,7 +16,7 @@ struct ConsoleTextView: NSViewRepresentable {
     // MARK: - Properties
     
     /// The read-only text content to display.
-    let text: String
+    let attributedText: AttributedString
     
     /// The font size for the console text.
     var fontSize: CGFloat
@@ -38,7 +38,7 @@ struct ConsoleTextView: NSViewRepresentable {
         let textView = NSTextView()
         textView.isEditable = false
         textView.isSelectable = true
-        textView.isRichText = false
+        textView.isRichText = true // Must be true for attributed string colors
         textView.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
         
         // Initial Theme
@@ -75,9 +75,7 @@ struct ConsoleTextView: NSViewRepresentable {
         if textView.backgroundColor != colors.consoleBackground {
             textView.backgroundColor = colors.consoleBackground
         }
-        if textView.textColor != colors.text {
-            textView.textColor = colors.text
-        }
+        // Basic textColor is fallback; attributed string overrides it
         
         // Update font if needed
         if textView.font?.pointSize != fontSize {
@@ -86,20 +84,11 @@ struct ConsoleTextView: NSViewRepresentable {
         
         context.coordinator.updateSettings(theme: theme, fontSize: fontSize)
         
-        // Update only if content changed to avoid unnecessary redraws/scroll jumps.
-        // Or if theme changed, we might need to re-apply attributes to ensure text color is correct
-        // because we use NSAttributedString which locks in colors.
+        // Always update text logic
+        context.coordinator.updateTextWithLinks(textView, attributedText: attributedText)
         
-        if textView.string != text {
-            // Content changed
-            context.coordinator.updateTextWithLinks(textView, text: text)
-             // Auto-scroll logic:
-             if !text.isEmpty {
-                  textView.scrollToEndOfDocument(nil)
-             }
-        } else {
-             // Text same, but theme/font might have changed. Re-apply attributes.
-             context.coordinator.updateTextWithLinks(textView, text: text)
+        if !attributedText.description.isEmpty { // Crude check, but we want auto-scroll
+             textView.scrollToEndOfDocument(nil)
         }
     }
     
@@ -128,52 +117,96 @@ struct ConsoleTextView: NSViewRepresentable {
         }
         
         /// Updates the text view's storage with attributed text, detecting and linking file locations.
-        ///
-        /// This method performs the following operations:
-        /// 1. Applies default font and text color to the entire range.
-        /// 2. Scans the text for patterns matching Swift file locations (e.g., `File.swift:10:5`).
-        /// 3. Adds link attributes to the matching ranges using a custom `novaswift://` scheme.
-        ///
-        /// - Parameters:
-        ///   - textView: The `NSTextView` to update.
-        ///   - text: The raw string content.
-        func updateTextWithLinks(_ textView: NSTextView, text: String) {
-            let attributedString = NSMutableAttributedString(string: text)
-            let fullRange = NSRange(location: 0, length: text.utf16.count)
+        func updateTextWithLinks(_ textView: NSTextView, attributedText: AttributedString) {
+            // Convert SwiftUI AttributedString to NSAttributedString
+            let nsAttrString = NSMutableAttributedString(attributedText)
+            let string = nsAttrString.string
+            let fullRange = NSRange(location: 0, length: nsAttrString.length)
             let colors = ThemeColors.forTheme(currentTheme)
             
-            // Default styling
-            attributedString.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: currentFontSize, weight: .regular), range: fullRange)
-            attributedString.addAttribute(.foregroundColor, value: colors.text, range: fullRange)
+            // 1. Apply Base Font (if not already set)
+            nsAttrString.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: currentFontSize, weight: .regular), range: fullRange)
             
-            // Detect patterns: /path/to/script.swift:LINE:COL
-            // Regex: [^:\n]+\.swift:(\d+):(\d+)
-            // We exclude newlines (\n) to prevent the regex from greedily consuming
-            // previous lines (like JSON output) that don't contain colons.
-            let pattern = #"[^:\n]+\.swift:(\d+):(\d+)"#
+            // 2. Apply Default Text Color (only where no color is set)
+            nsAttrString.enumerateAttribute(.foregroundColor, in: fullRange, options: []) { (value, range, stop) in
+                if value == nil {
+                    nsAttrString.addAttribute(.foregroundColor, value: colors.text, range: range)
+                }
+            }
+            
+            // 3. Detect and Apply Standard Web/File URLs
+            if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
+                detector.enumerateMatches(in: string, options: [], range: fullRange) { match, _, _ in
+                    if let match = match, let url = match.url {
+                        nsAttrString.addAttribute(.link, value: url, range: match.range)
+                        nsAttrString.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.range)
+                    }
+                }
+            }
+            
+            // 4. Detect and Apply Custom Error Links (Custom Scheme)
+            // Regex: ([^:\n]+\.swift):(\d+):(\d+)
+            let pattern = #"([^:\n]+\.swift):(\d+):(\d+)"#
             if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
-                regex.enumerateMatches(in: text, options: [], range: fullRange) { match, _, _ in
-                    guard let match = match, match.numberOfRanges == 3 else { return }
+                regex.enumerateMatches(in: string, options: [], range: fullRange) { match, _, _ in
+                    guard let match = match, match.numberOfRanges == 4 else { return }
                     
-                    let lineRange = match.range(at: 1)
-                    let colRange = match.range(at: 2)
+                    let pathRange = match.range(at: 1)
+                    let lineRange = match.range(at: 2)
+                    let colRange = match.range(at: 3)
                     
-                    if let line = Int((text as NSString).substring(with: lineRange)),
-                       let col = Int((text as NSString).substring(with: colRange)) {
+                    let path = (string as NSString).substring(with: pathRange)
+                    if let line = Int((string as NSString).substring(with: lineRange)),
+                       let col = Int((string as NSString).substring(with: colRange)) {
                         
                         // Create a custom URL scheme for navigation
-                        if let url = URL(string: "novaswift://jump?line=\(line)&col=\(col)") {
-                            attributedString.addAttribute(.link, value: url, range: match.range)
-                            // Optional: Make it look like a link (blue/underline) or keep it subtle
-                            attributedString.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.range)
-                            // Ensure link color is readable against background (standard link blue is usually fine, but let's stick to system default for links)
+                        var components = URLComponents()
+                        components.scheme = "novaswift"
+                        components.host = "jump"
+                        components.queryItems = [
+                            URLQueryItem(name: "file", value: path),
+                            URLQueryItem(name: "line", value: String(line)),
+                            URLQueryItem(name: "col", value: String(col))
+                        ]
+                        
+                        if let url = components.url {
+                            // Only apply if not already linked by DataDetector (though DataDetector usually misses these specific file patterns)
+                            nsAttrString.addAttribute(.link, value: url, range: match.range)
+                            nsAttrString.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.range)
                         }
                     }
                 }
             }
             
-            // Preserve selection if possible? No, console is usually read-only auto-scroll.
-            textView.textStorage?.setAttributedString(attributedString)
+            if textView.textStorage?.string != string || textView.textStorage?.length != nsAttrString.length {
+                textView.textStorage?.setAttributedString(nsAttrString)
+            } else {
+                 textView.textStorage?.setAttributedString(nsAttrString)
+            }
+        }
+        
+        // MARK: - NSTextViewDelegate
+        
+        func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+            // Handle Custom Scheme
+            if let url = link as? URL, url.scheme == "novaswift" {
+                if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                   let queryItems = components.queryItems,
+                   let path = queryItems.first(where: { $0.name == "file" })?.value {
+                    
+                    let fileURL = URL(fileURLWithPath: path)
+                    NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+                }
+                return true // We handled it
+            }
+            
+            // Handle Web/File Links (Let system handle or open manually)
+            if let url = link as? URL {
+                NSWorkspace.shared.open(url)
+                return true
+            }
+            
+            return false // Fallback
         }
     }
 }

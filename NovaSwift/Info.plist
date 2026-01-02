@@ -4,5 +4,16 @@
 <dict>
 	<key>CFBundleIconFile</key>
 	<string>NovaSwift</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>novaswift</string>
+			</array>
+			<key>CFBundleURLName</key>
+			<string>com.khinevich.NovaSwift</string>
+		</dict>
+	</array>
 </dict>
 </plist>

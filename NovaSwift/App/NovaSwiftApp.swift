@@ -14,5 +14,6 @@ struct NovaSwiftApp: App {
             ContentView()
         }
         .windowToolbarStyle(.unified)
+        .handlesExternalEvents(matching: ["novaswift"])
     }
 }

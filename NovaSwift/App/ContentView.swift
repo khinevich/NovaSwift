@@ -34,6 +34,7 @@ struct ContentView: View {
     // Lifted from InputContainer to allow sharing with Sidebar
     @State private var editorText: String = ""
     @State private var currentFile: URL?
+    @State private var selectedRange: NSRange = NSRange(location: 0, length: 0)
     
     // MARK: - Body
     
@@ -59,7 +60,8 @@ struct ContentView: View {
                             executor: executor,
                             projectManager: projectManager,
                             editorText: $editorText,
-                            currentFile: $currentFile
+                            currentFile: $currentFile,
+                            selectedRange: $selectedRange
                         )
                         .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
                         .layoutPriority(1)
@@ -76,9 +78,16 @@ struct ContentView: View {
                 Divider()
                 
                 // Bottom Bar: Status
-                StatusBarView(isRunning: executor.isRunning, exitCode: executor.exitCode)
+                StatusBarView(
+                    isRunning: executor.isRunning,
+                    isWaitingForInput: executor.isWaitingForInput,
+                    exitCode: executor.exitCode
+                )
             }
             .navigationTitle("NovaSwift")
+            .onOpenURL { url in
+                handleIncomingURL(url)
+            }
             .toolbar {
                 // Sidebar Toggle (Left side)
                 ToolbarItem(placement: .navigation) {
@@ -116,6 +125,40 @@ struct ContentView: View {
                 InfoView()
             }
         }
+    }
+    func handleIncomingURL(_ url: URL) {
+        guard url.scheme == "novaswift", url.host == "jump" else { return }
+        
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
+              let queryItems = components.queryItems else { return }
+        
+        let line = queryItems.first(where: { $0.name == "line" })?.value.flatMap(Int.init)
+        let col = queryItems.first(where: { $0.name == "col" })?.value.flatMap(Int.init)
+        
+        if let line = line {
+            scrollToLocation(line: line, column: col ?? 1)
+        }
+    }
+    
+    func scrollToLocation(line: Int, column: Int) {
+        // Convert line/column to character index
+        // Lines are 1-based, columns are 1-based
+        let lines = editorText.components(separatedBy: .newlines)
+        
+        guard line > 0 && line <= lines.count else { return }
+        
+        var location = 0
+        // Sum up lengths of previous lines
+        for i in 0..<(line - 1) {
+            location += lines[i].utf16.count + 1 // +1 for newline
+        }
+        
+        // Add column offset (1-based to 0-based)
+        let targetLineLength = lines[line - 1].utf16.count
+        let colIndex = max(0, min(column - 1, targetLineLength))
+        location += colIndex
+        
+        self.selectedRange = NSRange(location: location, length: 0)
     }
 }
 

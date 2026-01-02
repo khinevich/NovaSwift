@@ -17,6 +17,9 @@ struct StatusBarView: View {
     /// A boolean indicating whether a script is currently executing.
     let isRunning: Bool
     
+    /// A boolean indicating if the script is waiting for user input.
+    let isWaitingForInput: Bool
+    
     /// The exit code of the last executed script. `nil` if no script has run yet or the status is cleared.
     let exitCode: Int?
     
@@ -28,9 +31,16 @@ struct StatusBarView: View {
             if isRunning {
                 ProgressView()
                     .controlSize(.regular)
-                Text("Running...")
-                    .font(.largeTitle)
-                    .foregroundColor(.primary)
+                
+                if isWaitingForInput {
+                    Text("Awaiting for user input")
+                        .font(.largeTitle)
+                        .foregroundColor(.primary)
+                } else {
+                    Text("Running...")
+                        .font(.largeTitle)
+                        .foregroundColor(.primary)
+                }
             } else {
                 Text("Ready")
                     .font(.largeTitle)
@@ -54,8 +64,11 @@ struct StatusBarView: View {
     }
 }
 #Preview("Ready") {
-    StatusBarView(isRunning: false, exitCode: 0)
+    StatusBarView(isRunning: false, isWaitingForInput: false, exitCode: 0)
 }
 #Preview("Running") {
-    StatusBarView(isRunning: true, exitCode: 1)
+    StatusBarView(isRunning: true, isWaitingForInput: false, exitCode: 1)
+}
+#Preview("Waiting") {
+    StatusBarView(isRunning: true, isWaitingForInput: true, exitCode: nil)
 }

@@ -133,4 +133,60 @@ struct ScriptExecutorTests {
         // But ideally:
         #expect(output.trimmingCharacters(in: .whitespacesAndNewlines) == tempPath || output.contains("/var/folders"), "Script should run in the temp directory. Got: \(output), Expected: \(tempPath)")
     }
+    
+    /// Verifies that standard input can be sent to the running script.
+    ///
+    /// **Scenario:**
+    /// A script waits for input using `readLine()`, then echoes it back.
+    /// The test sends "TestInput" via `sendInput`.
+    ///
+    /// **Expectation:**
+    /// - The script receives the input and prints "Echo: TestInput".
+    @Test("Standard Input Interaction")
+    func testStandardInput() async throws {
+        let executor = await ScriptExecutor()
+        let script = """
+        import Foundation
+        print("Ready")
+        fflush(stdout)
+        if let line = readLine() {
+            print("Echo: " + line)
+        }
+        """
+        
+        await MainActor.run {
+            executor.execute(script)
+        }
+        
+        // Wait for "Ready" to ensure process is running and waiting
+        var ready = false
+        for _ in 0..<50 { // Wait up to 5 seconds
+             let output = await executor.output
+             if output.contains("Ready") {
+                 ready = true
+                 break
+             }
+             try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        #expect(ready, "Script did not start or print Ready")
+        
+        // Send Input
+        await MainActor.run {
+            executor.sendInput("TestInput\n")
+        }
+        
+        // Wait for finish
+        var finished = false
+        for _ in 0..<50 {
+            if await executor.exitCode != nil {
+                finished = true
+                break
+            }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        #expect(finished, "Script did not finish after input")
+        
+        let output = await executor.output
+        #expect(output.contains("Echo: TestInput"), "Script did not echo input. Output: \(output)")
+    }
 }

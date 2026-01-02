@@ -26,6 +26,9 @@ struct OutputContainer: View {
     /// The document wrapper for exporting text.
     @State private var exportDocument: TextDocument?
     
+    /// Buffer for user input to stdin.
+    @State private var inputText: String = ""
+    
     // MARK: - Body
     
     var body: some View {
@@ -61,7 +64,28 @@ struct OutputContainer: View {
             }
             
             // Output Display
-            OutputConsoleView(text: executor.output)
+            OutputConsoleView(text: executor.attributedOutput)
+            
+            // Input Field (Only when running)
+            if executor.isRunning {
+                HStack {
+                    Text(">")
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                    
+                    TextField("Send input...", text: $inputText)
+                        .font(.system(.body, design: .monospaced))
+                        .textFieldStyle(.plain)
+                        .onSubmit {
+                            executor.sendInput(inputText + "\n")
+                            inputText = ""
+                        }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(Color(nsColor: .controlBackgroundColor))
+                .overlay(Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor)), alignment: .top)
+            }
         }
         .fileExporter(
             isPresented: $isExporting,

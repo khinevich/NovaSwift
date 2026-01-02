@@ -33,6 +33,9 @@ struct InputContainer: View {
     /// If `nil`, the editor is in an "Untitled" state.
     @Binding var currentFile: URL?
     
+    /// The selected range of the text (cursor position).
+    @Binding var selectedRange: NSRange
+    
     // MARK: - Local State
     
     /// Tracks the presentation of the file importer sheet.
@@ -104,7 +107,7 @@ struct InputContainer: View {
                 // Execution Control (Run, Stop)
                 ControlGroup {
                     Button(action: {
-                        executor.execute(editorText, language: currentLanguage)
+                        executor.execute(editorText, fileURL: currentFile, language: currentLanguage)
                     }) {
                         Label("Run", systemImage: "play.fill")
                             .foregroundStyle(.green)
@@ -126,7 +129,7 @@ struct InputContainer: View {
             
             // Editor Area
             // The main text editor, configured with the detected language.
-            InputEditorView(text: $editorText, language: currentLanguage)
+            InputEditorView(text: $editorText, selectedRange: $selectedRange, language: currentLanguage)
         }
         // Configure the file importer to support all known languages + plain text.
         // For Kotlin, we explicitly add a UTType for .kts since it's not a standard system type.

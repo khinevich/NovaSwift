@@ -10,6 +10,8 @@ import SwiftUI
 struct SettingsView: View {
     @AppStorage("appTheme") private var currentTheme: AppTheme = .dark
     @AppStorage("editorFontSize") private var fontSize: Double = 14.0
+    @AppStorage("customSwiftPath") private var customSwiftPath: String = ""
+    @AppStorage("customKotlinPath") private var customKotlinPath: String = ""
     
     @Environment(\.dismiss) var dismiss
 
@@ -83,9 +85,61 @@ struct SettingsView: View {
             }
             .padding(.horizontal, 24)
             .padding(.top, 16)
+            .padding(.bottom, 16)
+            
+            Divider()
+            
+            // Executables Paths
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Executables")
+                        .font(.title2.bold())
+                        .foregroundStyle(.secondary)
+                    
+                    Text("Standard locations are used by default. If you want to specify custom paths, enter them below.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Swift Path")
+                        .font(.callout)
+                        .foregroundStyle(.primary)
+                    TextField("/path/to/swift", text: $customSwiftPath)
+                        .textFieldStyle(.roundedBorder)
+                    
+                    Text("Detected: \(resolvePath(for: "swift"))")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Kotlin Path")
+                        .font(.callout)
+                        .foregroundStyle(.primary)
+                    TextField("/path/to/kotlinc", text: $customKotlinPath)
+                        .textFieldStyle(.roundedBorder)
+                    
+                    Text("Detected: \(resolvePath(for: "kotlinc"))")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("To find the correct path, run:")
+                    Text("`which swift`")
+                    Text("`which kotlinc`")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.top, 8)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 16)
             .padding(.bottom, 24)
         }
-        .frame(width: 240)
+        .frame(width: 350) // Increased width again for better text layout
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Done") {
@@ -93,6 +147,13 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+    
+    private func resolvePath(for name: String) -> String {
+        if let url = ScriptExecutor.findExecutable(named: name) {
+            return url.path
+        }
+        return "Not found"
     }
 }
 

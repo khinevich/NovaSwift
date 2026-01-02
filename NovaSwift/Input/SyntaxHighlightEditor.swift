@@ -18,6 +18,9 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
     /// The source code text to be edited.
     @Binding var text: String
     
+    /// The selected range of the text (cursor position).
+    @Binding var selectedRange: NSRange
+    
     // MARK: - Configuration
     
     /// The font size for the editor text.
@@ -129,16 +132,29 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
         
         if textView.string != text {
             // Preserve cursor position if possible
-            let selectedRanges = textView.selectedRanges
+            // let selectedRanges = textView.selectedRanges // No longer needed as we drive it
             textView.string = text
             context.coordinator.highlightSyntax(in: textView)
-            textView.selectedRanges = selectedRanges
             
+            // Restore selection from binding if valid
+            if selectedRange.location != NSNotFound && selectedRange.upperBound <= text.utf16.count {
+                textView.setSelectedRange(selectedRange)
+            }
+
             // Refresh ruler
             nsView.verticalRulerView?.needsDisplay = true
         } else {
             // Re-highlight if theme/font/language changed even if text is same
             context.coordinator.highlightSyntax(in: textView)
+            
+            // Update selection if binding changed externally
+            if textView.selectedRange() != selectedRange {
+                if selectedRange.location != NSNotFound && selectedRange.upperBound <= text.utf16.count {
+                    textView.setSelectedRange(selectedRange)
+                    textView.scrollRangeToVisible(selectedRange)
+                }
+            }
+            
             nsView.verticalRulerView?.needsDisplay = true
         }
     }
@@ -179,11 +195,20 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             
             // 1. Update the SwiftUI Binding
             parent.text = textView.string
+            
+            // Sync selection (though usually text change implies selection change, handled by didChangeSelection)
+            parent.selectedRange = textView.selectedRange()
+            
             // 2. Apply Syntax Highlighting
             highlightSyntax(in: textView)
             
             // 3. Update Line Numbers
             textView.enclosingScrollView?.verticalRulerView?.needsDisplay = true
+        }
+        
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            parent.selectedRange = textView.selectedRange()
         }
         
         /// Applies syntax highlighting attributes to the entire text view content.
@@ -254,11 +279,33 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             // 2. Apply Code Rules to the full text
             applyCodeRules(in: fullRange)
             
-            // 3. Apply Strings (Overwrites code rules inside strings)
-            let stringPattern = ##""(?:\\.|[^\"])*""##
+            // 3. Comments
+            // We apply comments BEFORE strings so that if a string contains "//", the string coloring
+            // overwrites the comment coloring (fixing URLs like "https://...").
+            // Conversely, if a comment contains a quote, it will be highlighted as a string, which is an acceptable trade-off.
+            let commentPattern = ##"//.*"##
+            apply(commentPattern, color: colors.comment, range: fullRange)
+            
+            // 4. Apply Strings (Overwrites code rules and comments inside strings)
+            // Improved pattern: Exclude backslash from the 'not quote' class to force escapes to be handled by \\.
+            // Also exclude newlines to prevent single-line strings from spanning lines (incorrect for Swift/Kotlin).
+            // We use two patterns: one for closed strings, one for unterminated strings (for typing feedback).
+            
+            // 4a. Closed Strings
+            let stringPattern = ##""(?:\\.|[^"\\\n\\])*""##
             apply(stringPattern, color: colors.string, range: fullRange)
             
-            // 4. Handle String Interpolation: \( ... )
+            // 4b. Unterminated Strings (Match from quote to end of line)
+            let unterminatedStringPattern = ##""(?:\\.|[^"\\\n\\])*$"##
+            apply(unterminatedStringPattern, color: colors.string, range: fullRange)
+            
+            // 4c. Apply Escape Sequences (inside strings)
+            // We apply this AFTER strings to highlight escapes (like \n, \", \\) differently.
+            // Matches: \0, \\, \t, \n, \r, \", \' and unicode \u{...}
+            let escapePattern = ##"\\[0\\tnr"']|\\u\{[0-9a-fA-F]+\}"##
+            apply(escapePattern, color: colors.attribute, fontTrait: .bold, range: fullRange)
+            
+            // 5. Handle String Interpolation: \( ... )
             // Only applicable for Swift currently. Kotlin uses $variable or ${expression}
             if currentLanguage == .swift {
                 let interpolationPattern = ##"\\((?:[^()]|\([^()]*\))*)"##
@@ -266,12 +313,24 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
                 if let regex = try? NSRegularExpression(pattern: interpolationPattern, options: []) {
                     regex.enumerateMatches(in: string, options: [], range: fullRange) { match, _, _ in
                         if let matchRange = match?.range {
-                            // Reset color to default (Plain) for the interpolation block
-                            textStorage.addAttribute(.foregroundColor, value: colors.plain, range: matchRange)
-                            textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: currentFontSize, weight: .regular), range: matchRange)
+                            // 1. Color the delimiters \()
+                            // The whole match is \( ... )
+                            // We can color the whole thing as Attribute/Keyword first?
+                            textStorage.addAttribute(.foregroundColor, value: colors.attribute, range: matchRange)
+                            textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: currentFontSize, weight: .bold), range: matchRange)
                             
-                            // Re-apply code highlighting INSIDE the interpolation
-                            applyCodeRules(in: matchRange)
+                            // 2. Identify Inner Range
+                            // \( is 2 chars. ) is 1 char.
+                            if matchRange.length > 3 {
+                                let innerRange = NSRange(location: matchRange.location + 2, length: matchRange.length - 3)
+                                
+                                // 3. Reset Inner Range to Plain
+                                textStorage.addAttribute(.foregroundColor, value: colors.plain, range: innerRange)
+                                textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: currentFontSize, weight: .regular), range: innerRange)
+                                
+                                // 4. Apply Code Rules to Inner Range
+                                applyCodeRules(in: innerRange)
+                            }
                         }
                     }
                 }
@@ -288,11 +347,6 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
                 }
                 // Simple variable interpolation $var is harder to safely regex without parsing, skipping for now or treating as plain/var color
             }
-            
-            // 5. Comments (Last)
-            // Comments should override everything else (strings, keywords, etc.) if they appear last in the logic.
-            let commentPattern = ##"//.*"##
-            apply(commentPattern, color: colors.comment, range: fullRange)
         }
     }
 }
