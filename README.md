@@ -4,13 +4,14 @@ Native macOS integrated development environment (IDE) specifically built for wri
 
 1. Editor pane and output pane.
 2. Write script to a file and run it using `/usr/bin/env swift` or `kotlinc -script`.
-3. Support for long-running scripts.
-4. Live output of the script as it executes.
-5. Display of errors and execution failures.
-6. Indication of whether the script is currently running.
-7. Indication of non-zero exit codes.
-8. Syntax highlighting for keywords.
-9. Clickable error location descriptions to navigate to code.
+3. Support for long-running and **interactive** scripts.
+4. Live, **unbuffered** output of the script as it executes.
+5. Display of errors and execution failures with **enhanced navigation**.
+6. Intelligent status bar indicating "Ready", "Running...", or "Awaiting for user input".
+7. System notifications when scripts require your attention.
+8. Indication of non-zero exit codes.
+9. Syntax highlighting for keywords, types, strings, and comments.
+10. Clickable error locations to navigate to code across different files.
 
 ![NovaSwift Logo](NovaSwift.png)
 
@@ -19,11 +20,14 @@ Native macOS integrated development environment (IDE) specifically built for wri
 NovaSwift provides a streamlined experience for script development on macOS:
 
 *   **Multi-Language Support:** Write and execute **Swift** (`.swift`) and **Kotlin** (`.kts`) scripts seamlessly.
+*   **Interactive Scripts:** Support for standard input (`stdin`). A dedicated input field appears automatically when a script is waiting for your input.
+*   **System Notifications:** Receive macOS desktop notifications when a script is waiting for input (e.g., `"InputTest.swift requires your attention"`), even if the app is in the background.
+*   **Intelligent Status:** The status bar uses heuristics to detect when a script is likely waiting for input (e.g., lines ending in `:` or `?`), updating its state to "Awaiting for the user input".
+*   **Unbuffered Real-time Output:** Child processes run with `NSUnbufferedIO` enabled, ensuring that prompts and log messages appear instantly without needing manual `fflush` calls in your code.
+*   **Enhanced Error Navigation:** Click on any error in the console (e.g., `main.swift:10:5`) to jump directly to that line. NovaSwift automatically opens the referenced file if it's not already active.
 *   **Syntax Highlighting:** Native, performant syntax highlighting for keywords, types, strings, and comments in both supported languages.
-*   **Live Output:** View script output (stdout/stderr) in real-time as it executes, perfect for long-running tasks or debugging.
 *   **File Explorer:** Integrated sidebar to browse your project folder, visualize file structures, and recognize language-specific file types.
-*   **File Management:** Open, edit, and **persistently save** your scripts directly from the IDE.
-*   **Sandboxed Security:** Scripts run in a controlled environment with safe file access management.
+*   **Settings & Customization:** Configure your environment with support for Dark/Light mode, adjustable font sizes, and custom paths for Swift and Kotlin executables.
 
 ## Keyboard Shortcuts
 
@@ -33,6 +37,8 @@ Boost your productivity with these built-in shortcuts:
 | :--- | :---: | :--- |
 | **Run Script** | `Cmd + R` (⌘R) | Compiles and executes the currently open script. |
 | **Save File** | `Cmd + S` (⌘S) | Saves the current changes to the open file. |
+| **Increase Font** | `Cmd + +` | Increases the editor font size. |
+| **Decrease Font** | `Cmd + -` | Decreases the editor font size. |
 
 ## Getting Started
 
@@ -43,6 +49,12 @@ Boost your productivity with these built-in shortcuts:
     ```bash
     brew install kotlin
     ```
+
+### Notifications
+
+NovaSwift uses system notifications to alert you when a script needs input. You can manage notification permissions directly in the **Settings** window within the app.
+
+---
 
 ### Running the Application
 
@@ -92,27 +104,27 @@ This command will compile the project and run all unit tests, reporting pass/fai
 
 The repository includes several sample scripts in `TestScripts/` to verify IDE functionality manually:
 
-1. `test_script/easy.swift`
-       * Purpose: Basic integration test.
-       * Features: Simple printing, basic arithmetic, and date display.
-       * Use case: Verify the tool can run swift and capture stdout.
+1. `TestScripts/Swift/InputTest.swift`
+       * Purpose: Test **Interactive Scripts** and **Notifications**.
+       * Features: Uses `readLine()` to wait for input.
+       * Use case: Verify the "Awaiting input" status and system notifications.
 
-2. `test_script/medium.swift`
+2. `TestScripts/Swift/Medium.swift`
        * Purpose: Intermediate logic test.
        * Features: Writes to a temporary file, reads it back, and performs JSON encoding using Codable.
        * Use case: Verify the tool handles filesystem permissions and more complex library imports (Foundation).
 
-3. `test_script/hard.swift`
+3. `TestScripts/Swift/Hard.swift`
        * Purpose: Concurrency and UI responsiveness test.
        * Features: Spawns background threads using DispatchQueue, uses sleep() to simulate delay, and prints heartbeat messages from the main thread.
        * Use case: Critical for testing "Live Output" to ensure your UI updates in real-time and doesn't block while waiting for the script to finish.
 
-4. `test_script/error_compile.swift`
+4. `TestScripts/Swift/ErrorCompile.swift`
        * Purpose: Syntax highlighting and parsing test.
        * Features: Contains a deliberate syntax error (unclosed string).
        * Use case: Verify your "Error Location" feature (e.g., clickable error messages like line 6: error).
 
-5. `test_script/error_runtime.swift`
+5. `TestScripts/Swift/ErrorRuntime.swift`
        * Purpose: Exit code and crash handling test.
        * Features: Compiles successfully but crashes at runtime (Index out of bounds).
        * Use case: Verify your tool correctly identifies a non-zero exit code and displays runtime errors (stderr).
@@ -125,10 +137,10 @@ The repository includes several sample scripts in `TestScripts/` to verify IDE f
    ```
    *   **Use case:** Import this file into NovaSwift to verify Kotlin syntax highlighting and execution (ensure `kotlinc` is installed).
 
-7. `TestScripts/Kotlin/LongRunning.kts`
-       * Purpose: Continuous output and buffering test.
-       * Features: Loops with `Thread.sleep` and explicitly flushes stdout.
-       * Use case: Verify that output is displayed in real-time and not buffered until the end of execution.
+7. `TestScripts/Kotlin/InputTest.kts`
+       * Purpose: Kotlin interaction test.
+       * Features: Uses `readln()` to wait for input.
+       * Use case: Verify Kotlin stdin support and unbuffered output.
 
 8. `TestScripts/Kotlin/FileIO.kts`
        * Purpose: File permissions and I/O test.
