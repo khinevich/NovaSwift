@@ -72,6 +72,7 @@ class ScriptExecutor {
             let newProcess = Process()
             newProcess.executableURL = executableURL
             newProcess.arguments = language.executionArguments(for: scriptPath.path)
+            newProcess.currentDirectoryURL = tempDirectory
             
             // 3. Setup Pipes
             let pipe = Pipe()
