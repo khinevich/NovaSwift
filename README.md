@@ -2,6 +2,16 @@
 
 Native macOS integrated development environment (IDE) specifically built for writing and executing Swift and Kotlin scripts with high performance and a modern user interface.
 
+1. Editor pane and output pane.
+2. Write script to a file and run it using `/usr/bin/env swift` or `kotlinc -script`.
+3. Support for long-running scripts.
+4. Live output of the script as it executes.
+5. Display of errors and execution failures.
+6. Indication of whether the script is currently running.
+7. Indication of non-zero exit codes.
+8. Syntax highlighting for keywords.
+9. Clickable error location descriptions to navigate to code.
+
 ![NovaSwift Logo](NovaSwift.png)
 
 ## Features
