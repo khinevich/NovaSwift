@@ -59,9 +59,17 @@ struct SidebarView: View {
                         if item.isDirectory {
                             Image(systemName: "folder.fill")
                                 .foregroundColor(.blue)
-                        } else {
+                        } else if item.name.hasSuffix(".kts") {
+                            Image("Kotlin")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 16, height: 16)
+                        } else if item.name.hasSuffix(".swift") {
                             Image(systemName: "swift")
                                 .foregroundColor(.orange)
+                        } else {
+                            Image(systemName: "doc")
+                                .foregroundColor(.gray)
                         }
                         
                         Text(item.name)
