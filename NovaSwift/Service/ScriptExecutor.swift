@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import UserNotifications
 
 /// A service class responsible for executing Swift scripts and managing their runtime state.
 ///
@@ -225,12 +226,36 @@ class ScriptExecutor {
                     let promptSuffixes = [":", "?", ">", "$"]
                     let isPromptPattern = promptSuffixes.contains { trimmedLastLine.hasSuffix($0) }
                     
-                    self.isWaitingForInput = !self.output.hasSuffix("\n") || isPromptPattern
+                    let newState = !self.output.hasSuffix("\n") || isPromptPattern
+                    
+                    if newState && !self.isWaitingForInput {
+                        let scriptName = self.currentDisplayPath.map { URL(fileURLWithPath: $0).lastPathComponent } 
+                                        ?? self.currentTempPath.map { URL(fileURLWithPath: $0).lastPathComponent } 
+                                        ?? "Script"
+                        self.sendAttentionNotification(for: scriptName)
+                    }
+                    
+                    self.isWaitingForInput = newState
                 }
             }
         }
         
         buffer = Data(leftover)
+    }
+    
+    private func sendAttentionNotification(for scriptName: String) {
+        let content = UNMutableNotificationContent()
+        content.title = "NovaSwift"
+        content.body = "\(scriptName) requires your attention"
+        content.sound = .default
+        
+        let request = UNNotificationRequest(
+            identifier: "NovaSwiftInputRequired-\(UUID().uuidString)",
+            content: content,
+            trigger: nil // Deliver immediately
+        )
+        
+        UNUserNotificationCenter.current().add(request)
     }
     
     public static func findExecutable(named name: String) -> URL? {
