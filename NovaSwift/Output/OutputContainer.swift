@@ -66,8 +66,8 @@ struct OutputContainer: View {
             // Output Display
             OutputConsoleView(text: executor.attributedOutput)
             
-            // Input Field (Only when running)
-            if executor.isRunning {
+            // Input Field (Only when awaiting input)
+            if executor.isRunning && executor.isWaitingForInput {
                 HStack {
                     Text(">")
                         .font(.system(.body, design: .monospaced))
