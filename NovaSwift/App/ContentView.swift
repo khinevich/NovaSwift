@@ -132,11 +132,33 @@ struct ContentView: View {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
               let queryItems = components.queryItems else { return }
         
+        let filePath = queryItems.first(where: { $0.name == "file" })?.value
         let line = queryItems.first(where: { $0.name == "line" })?.value.flatMap(Int.init)
         let col = queryItems.first(where: { $0.name == "col" })?.value.flatMap(Int.init)
         
+        if let path = filePath {
+            let fileURL = URL(fileURLWithPath: path)
+            // If it's a different file, open it first
+            if currentFile != fileURL {
+                if let content = projectManager.readFile(fileURL) {
+                    self.editorText = content
+                    self.currentFile = fileURL
+                }
+            }
+        }
+        
         if let line = line {
-            scrollToLocation(line: line, column: col ?? 1)
+            // Give a small delay to ensure the editor has loaded the new text if needed
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                scrollToLocation(line: line, column: col ?? 1)
+                
+                // CRITICAL: Reset the range slightly after scrolling so that clicking the same link again
+                // (which sets selectedRange to the same value) is still detected as a state change
+                // in the SwiftUI data flow for child views.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.selectedRange = NSRange(location: NSNotFound, length: 0)
+                }
+            }
         }
     }
     
@@ -158,6 +180,7 @@ struct ContentView: View {
         let colIndex = max(0, min(column - 1, targetLineLength))
         location += colIndex
         
+        // Setting selectedRange triggers the jump in InputContainer
         self.selectedRange = NSRange(location: location, length: 0)
     }
 }

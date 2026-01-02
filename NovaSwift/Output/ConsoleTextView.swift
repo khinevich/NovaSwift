@@ -145,8 +145,8 @@ struct ConsoleTextView: NSViewRepresentable {
             }
             
             // 4. Detect and Apply Custom Error Links (Custom Scheme)
-            // Regex: ([^:\n]+\.swift):(\d+):(\d+)
-            let pattern = #"([^:\n]+\.swift):(\d+):(\d+)"#
+            // Regex: ([^:\n]+\.(?:swift|kts)):(\d+):(\d+)
+            let pattern = #"([^:\n]+\.(?:swift|kts)):(\d+):(\d+)"#
             if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
                 regex.enumerateMatches(in: string, options: [], range: fullRange) { match, _, _ in
                     guard let match = match, match.numberOfRanges == 4 else { return }
@@ -188,20 +188,9 @@ struct ConsoleTextView: NSViewRepresentable {
         // MARK: - NSTextViewDelegate
         
         func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
-            // Handle Custom Scheme
-            if let url = link as? URL, url.scheme == "novaswift" {
-                if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-                   let queryItems = components.queryItems,
-                   let path = queryItems.first(where: { $0.name == "file" })?.value {
-                    
-                    let fileURL = URL(fileURLWithPath: path)
-                    NSWorkspace.shared.activateFileViewerSelecting([fileURL])
-                }
-                return true // We handled it
-            }
-            
-            // Handle Web/File Links (Let system handle or open manually)
             if let url = link as? URL {
+                // If it's our custom scheme, we open it via NSWorkspace to trigger onOpenURL globally
+                // This allows the app-wide URL handler to coordinate file opening and line scrolling.
                 NSWorkspace.shared.open(url)
                 return true
             }
