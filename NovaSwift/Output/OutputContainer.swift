@@ -73,7 +73,7 @@ struct OutputContainer: View {
                         .font(.system(.body, design: .monospaced))
                         .foregroundStyle(.secondary)
                     
-                    TextField("Send input...", text: $inputText)
+                    TextField("Type input and press Enter to send it...", text: $inputText)
                         .font(.system(.body, design: .monospaced))
                         .textFieldStyle(.plain)
                         .onSubmit {

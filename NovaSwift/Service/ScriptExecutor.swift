@@ -99,6 +99,11 @@ class ScriptExecutor {
             newProcess.arguments = language.executionArguments(for: scriptPath.path)
             newProcess.currentDirectoryURL = tempDirectory
             
+            // Disable block buffering so prompts appear immediately
+            var env = ProcessInfo.processInfo.environment
+            env["NSUnbufferedIO"] = "YES"
+            newProcess.environment = env
+            
             // 3. Setup Pipes
             let outPipe = Pipe()
             let errPipe = Pipe()
@@ -129,6 +134,7 @@ class ScriptExecutor {
                 Task { @MainActor [weak self] in
                     self?.exitCode = Int(p.terminationStatus)
                     self?.isRunning = false
+                    self?.isWaitingForInput = false
                     self?.inputPipe = nil // Clean up input pipe
                     // Cleanup
                     try? FileManager.default.removeItem(at: scriptPath)
@@ -207,9 +213,19 @@ class ScriptExecutor {
             Task { @MainActor [weak self] in
                 self?.appendOutput(textChunk, isError: isError)
                 
-                // Heuristic: If output doesn't end with newline, it might be a prompt
-                if let self = self, self.isRunning {
-                    self.isWaitingForInput = !textChunk.hasSuffix("\n")
+                // Heuristic: Determine if the script is waiting for user input.
+                // 1. If output doesn't end with a newline, it's likely an inline prompt (e.g., "Name: ").
+                // 2. If the last line before a newline ends with a prompt character (:, ?, >, $), it's likely a prompt.
+                // 3. We only check standard output, as errors (stderr) shouldn't trigger a waiting state.
+                if let self = self, self.isRunning, !isError {
+                    let lines = self.output.components(separatedBy: .newlines)
+                    let lastLine = self.output.hasSuffix("\n") ? (lines.dropLast().last ?? "") : (lines.last ?? "")
+                    let trimmedLastLine = lastLine.trimmingCharacters(in: .whitespaces)
+                    
+                    let promptSuffixes = [":", "?", ">", "$"]
+                    let isPromptPattern = promptSuffixes.contains { trimmedLastLine.hasSuffix($0) }
+                    
+                    self.isWaitingForInput = !self.output.hasSuffix("\n") || isPromptPattern
                 }
             }
         }

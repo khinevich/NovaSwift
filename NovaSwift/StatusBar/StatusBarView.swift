@@ -9,7 +9,7 @@ import SwiftUI
 
 /// A view displaying the current status of the application, including execution state and exit codes.
 ///
-/// The status bar shows "Ready" when idle, "Running..." with a progress indicator during execution,
+/// The status bar shows "Ready" when idle, "Running..." (or "Awaiting for the user input") during execution,
 /// and the final exit code after a script terminates.
 struct StatusBarView: View {
     // MARK: - Properties
@@ -33,7 +33,7 @@ struct StatusBarView: View {
                     .controlSize(.regular)
                 
                 if isWaitingForInput {
-                    Text("Awaiting for user input")
+                    Text("Awaiting for the user input")
                         .font(.largeTitle)
                         .foregroundColor(.primary)
                 } else {
