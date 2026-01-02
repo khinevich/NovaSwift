@@ -29,9 +29,9 @@ struct InputContainer: View {
     /// The current source code text (bound to parent state).
     @Binding var editorText: String
     
-    /// The name of the currently loaded file (bound to parent state).
+    /// The currently loaded file URL (bound to parent state).
     /// If `nil`, the editor is in an "Untitled" state.
-    @Binding var fileName: String?
+    @Binding var currentFile: URL?
     
     // MARK: - Local State
     
@@ -42,10 +42,10 @@ struct InputContainer: View {
     
     /// Determines the programming language based on the current file extension.
     ///
-    /// If `fileName` is `nil` or has an unknown extension, this defaults to `.swift`.
+    /// If `currentFile` is `nil` or has an unknown extension, this defaults to `.swift`.
     /// This property is used to configure the syntax highlighter and the script executor.
     private var currentLanguage: Language {
-        guard let fileName = fileName else { return .swift }
+        guard let fileName = currentFile?.lastPathComponent else { return .swift }
         return Language.from(fileName: fileName)
     }
     
@@ -63,18 +63,28 @@ struct InputContainer: View {
                 // File Actions (Import, Clear)
                 ControlGroup {
                     Button(action: { isImporting = true }) {
-                        Label("Import", systemImage: "document.badge.plus")
+                        Label("Import", systemImage: "arrow.up.right")
                     }
                     // Disable import while a script is running to prevent state conflicts.
                     .disabled(executor.isRunning)
                     
                     Button(action: {
                         editorText = ""
-                        fileName = nil
+                        currentFile = nil
                     }) {
                         Label("Clear", systemImage: "trash")
                     }
                     .disabled(editorText.isEmpty)
+                    
+                    Button(action: {
+                        if let url = currentFile {
+                            projectManager.saveFile(url, content: editorText)
+                        }
+                    }) {
+                        Label("Save", systemImage: "square.and.arrow.down")
+                    }
+                    .disabled(currentFile == nil)
+                    .keyboardShortcut("s", modifiers: .command)
                 }
                 .controlSize(.large)
                 
@@ -82,7 +92,7 @@ struct InputContainer: View {
                 
                 // File Name Display
                 // Shows the current file name and the detected language context.
-                Text(fileName ?? "Untitled (\(currentLanguage.displayName))")
+                Text(currentFile?.lastPathComponent ?? "Untitled (\(currentLanguage.displayName))")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: 200)
@@ -134,7 +144,7 @@ struct InputContainer: View {
     /// Handles the result of a file import operation.
     ///
     /// Reads the content of the selected file using `ProjectManager` and updates the
-    /// editor state (`editorText` and `fileName`) on the main thread.
+    /// editor state (`editorText` and `currentFile`) on the main thread.
     ///
     /// - Parameter result: The result from the file importer, containing selected URLs or an error.
     private func importFile(result: Result<[URL], Error>) {
@@ -144,7 +154,7 @@ struct InputContainer: View {
             if let fileContent = projectManager.readFile(selectedFile) {
                 Task { @MainActor in
                     editorText = fileContent
-                    fileName = selectedFile.lastPathComponent
+                    currentFile = selectedFile
                 }
             }
         } catch {

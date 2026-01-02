@@ -11,34 +11,38 @@ internal import UniformTypeIdentifiers
 /// A view representing the project's file explorer sidebar.
 ///
 /// This view displays the file system hierarchy rooted at the selected folder.
-/// It allows users to browse files and open them in the editor.
+/// It delegates business logic and state management to `SidebarViewModel`.
 ///
 /// - Key Features:
 ///   - Displays a folder tree structure using a recursive `List`.
-///   - Visualizes file types with specific icons (Folder, Swift, Kotlin).
-///   - Handles file selection and loading content into the editor bindings.
-///   - Provides an interface to open a new root folder.
+///   - Visualizes file types with specific icons.
+///   - Handles file selection, creation, renaming, and deletion.
 struct SidebarView: View {
-    // MARK: - Dependencies
+    // MARK: - View Model
     
-    /// The project manager responsible for file system data.
-    /// It holds the list of `FileSystemItem`s loaded from the root URL.
-    @Bindable var projectManager: ProjectManager
+    /// The view model managing the sidebar's state and logic.
+    @State private var viewModel: SidebarViewModel
     
     // MARK: - Bindings
     
     /// The text content of the currently selected file.
-    /// When a file is clicked, its content is read into this binding.
     @Binding var selectedFileContent: String
     
-    /// The name of the currently selected file.
-    /// Used to highlight the active file in the list.
-    @Binding var currentFileName: String?
+    /// The URL of the currently selected file.
+    @Binding var currentFile: URL?
     
     // MARK: - Local State
     
-    /// Controls the presentation of the folder importer sheet.
-    @State private var isImporterPresented: Bool = false
+    /// Focus state for the rename text field.
+    @FocusState private var isRenaming: Bool
+    
+    // MARK: - Initialization
+    
+    init(projectManager: ProjectManager, selectedFileContent: Binding<String>, currentFile: Binding<URL?>) {
+        self._viewModel = State(initialValue: SidebarViewModel(projectManager: projectManager))
+        self._selectedFileContent = selectedFileContent
+        self._currentFile = currentFile
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -49,9 +53,18 @@ struct SidebarView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 
-                // Open Folder Button
+                // Toolbar Actions
                 ControlGroup {
-                    Button(action: { isImporterPresented = true }) {
+                    Button(action: {
+                        viewModel.createNewFile()
+                        // Automatically focus the new item's text field if renaming starts
+                        isRenaming = true
+                    }) {
+                        Label("Add", systemImage: "plus")
+                    }
+                    .disabled(viewModel.projectManager.rootURL == nil)
+                    
+                    Button(action: { viewModel.isImporterPresented = true }) {
                         Label("Open", systemImage: "folder.badge.plus")
                     }
                 }
@@ -59,44 +72,74 @@ struct SidebarView: View {
             }
             
             // File List
-            if let _ = projectManager.rootURL {
-                List(projectManager.items, children: \.children) { item in
+            if let _ = viewModel.projectManager.rootURL {
+                List(viewModel.projectManager.items, children: \.children) { item in
                     HStack {
-                        // Icon Selection Logic
+                        // Icon Selection
                         if item.isDirectory {
                             Image(systemName: "folder.fill")
                                 .foregroundColor(.blue)
                         } else if item.name.hasSuffix(".kts") {
-                            // Use custom asset for Kotlin files
                             Image("Kotlin")
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .frame(width: 16, height: 16)
                         } else if item.name.hasSuffix(".swift") {
-                            // Use system symbol for Swift files
                             Image(systemName: "swift")
                                 .foregroundColor(.orange)
                         } else {
-                            // Fallback for other file types
                             Image(systemName: "doc")
                                 .foregroundColor(.gray)
                         }
                         
-                        Text(item.name)
-                            .foregroundColor(currentFileName == item.name ? .primary : .primary)
+                        // Inline Renaming vs Text Display
+                        if viewModel.renamingItemId == item.id {
+                            TextField("Name", text: $viewModel.editingName)
+                                .focused($isRenaming)
+                                .onSubmit {
+                                    viewModel.completeRename(item: item)
+                                    isRenaming = false
+                                }
+                                .textFieldStyle(.plain)
+                                .padding(2)
+                                .background(Color.secondary.opacity(0.2))
+                                .cornerRadius(4)
+                        } else {
+                            Text(item.name)
+                                .foregroundColor(currentFile == item.url ? .primary : .primary)
+                        }
                         Spacer()
                     }
                     .padding(.vertical, 2)
                     .padding(.horizontal, 4)
                     .background(
-                        // Highlight selection
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(currentFileName == item.name ? Color.blue.opacity(0.2) : Color.clear)
+                            .fill(currentFile == item.url && viewModel.renamingItemId != item.id ? Color.blue.opacity(0.2) : Color.clear)
                     )
                     .contentShape(Rectangle())
+                    // Context Menu
+                    .contextMenu {
+                        Button("Rename") {
+                            viewModel.startRenaming(item)
+                            isRenaming = true
+                        }
+                        
+                        Button("Show in Finder") {
+                            NSWorkspace.shared.activateFileViewerSelecting([item.url])
+                        }
+                        
+                        Divider()
+                        
+                        Button("Delete", role: .destructive) {
+                            viewModel.deleteItem(item, currentFile: $currentFile, contentBinding: $selectedFileContent)
+                        }
+                    }
+                    // Tap to Open
                     .onTapGesture {
-                        if !item.isDirectory {
-                            openFile(item)
+                        if viewModel.renamingItemId == nil {
+                            if !item.isDirectory {
+                                viewModel.openFile(item, currentFile: $currentFile, contentBinding: $selectedFileContent)
+                            }
                         }
                     }
                 }
@@ -109,7 +152,7 @@ struct SidebarView: View {
                     Text("Open a folder to browse files.")
                 } actions: {
                     Button("Open Folder") {
-                        isImporterPresented = true
+                        viewModel.isImporterPresented = true
                     }
                     .controlSize(.large)
                     .buttonStyle(.borderedProminent)
@@ -119,28 +162,18 @@ struct SidebarView: View {
         }
         .frame(maxHeight: .infinity)
         .fileImporter(
-            isPresented: $isImporterPresented,
+            isPresented: $viewModel.isImporterPresented,
             allowedContentTypes: [.folder],
             allowsMultipleSelection: false
         ) { result in
             switch result {
             case .success(let urls):
                 if let url = urls.first {
-                    projectManager.openFolder(url)
+                    viewModel.openFolder(url)
                 }
             case .failure(let error):
                 print("Failed to open folder: \(error.localizedDescription)")
             }
-        }
-    }
-    
-    /// Opens a file and updates the editor state.
-    ///
-    /// - Parameter item: The `FileSystemItem` representing the file to open.
-    private func openFile(_ item: FileSystemItem) {
-        if let content = projectManager.readFile(item.url) {
-            self.selectedFileContent = content
-            self.currentFileName = item.name
         }
     }
 }

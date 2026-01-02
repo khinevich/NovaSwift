@@ -33,7 +33,7 @@ struct ContentView: View {
     // MARK: - Editor State
     // Lifted from InputContainer to allow sharing with Sidebar
     @State private var editorText: String = ""
-    @State private var fileName: String?
+    @State private var currentFile: URL?
     
     // MARK: - Body
     
@@ -46,7 +46,7 @@ struct ContentView: View {
                         SidebarView(
                             projectManager: projectManager,
                             selectedFileContent: $editorText,
-                            currentFileName: $fileName
+                            currentFile: $currentFile
                         )
                         .frame(minWidth: 200, maxWidth: 300, maxHeight: .infinity)
                         .layoutPriority(0)
@@ -59,7 +59,7 @@ struct ContentView: View {
                             executor: executor,
                             projectManager: projectManager,
                             editorText: $editorText,
-                            fileName: $fileName
+                            currentFile: $currentFile
                         )
                         .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
                         .layoutPriority(1)

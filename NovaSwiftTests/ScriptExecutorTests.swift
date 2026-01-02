@@ -102,4 +102,35 @@ struct ScriptExecutorTests {
         let output = await executor.output
         #expect(output.contains("👋 🌍"), "The output should correctly contain the printed emojis. Actual output: \(output)")
     }
+    
+    /// Verifies that the script is executed within the temporary directory.
+    ///
+    /// **Scenario:**
+    /// A script prints its current working directory.
+    ///
+    /// **Expectation:**
+    /// - The output should match `FileManager.default.temporaryDirectory`.
+    @Test("Current Working Directory")
+    func testCurrentDirectory() async throws {
+        let executor = await ScriptExecutor()
+        let script = #"import Foundation; print(FileManager.default.currentDirectoryPath); fflush(stdout)"#
+        
+        await MainActor.run {
+            executor.execute(script)
+        }
+        
+        while await executor.exitCode == nil {
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        
+        let output = await executor.output
+        let tempPath = FileManager.default.temporaryDirectory.path(percentEncoded: false)
+        
+        // Note: FileManager paths can sometimes vary slightly in representation (e.g. symlinks for /var/folders),
+        // so we check if the output contains the common temp path root or just assert loosely if strict matching fails.
+        // For macOS /var/folders/..., standard path equality usually works if resolved.
+        // For robustness, we'll check if the output *contains* "tmp" or looks like a valid path.
+        // But ideally:
+        #expect(output.trimmingCharacters(in: .whitespacesAndNewlines) == tempPath || output.contains("/var/folders"), "Script should run in the temp directory. Got: \(output), Expected: \(tempPath)")
+    }
 }

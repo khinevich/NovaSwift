@@ -105,4 +105,80 @@ class ProjectManager {
             return nil
         }
     }
+    
+    /// Saves content to a file at the specified URL.
+    ///
+    /// - Parameters:
+    ///   - url: The URL of the file to save.
+    ///   - content: The string content to write.
+    func saveFile(_ url: URL, content: String) {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        
+        do {
+            try content.write(to: url, atomically: true, encoding: .utf8)
+        } catch {
+            print("Failed to save file to \(url): \(error)")
+        }
+    }
+    
+    /// Creates a new file in the specified directory.
+    ///
+    /// - Parameters:
+    ///   - directory: The directory URL where the file should be created.
+    ///   - name: The name of the new file (including extension).
+    ///   - content: The initial content of the file.
+    /// - Returns: The URL of the created file.
+    @discardableResult
+    func createFile(at directory: URL, name: String, content: String = "") -> URL {
+        let fileURL = directory.appendingPathComponent(name)
+        saveFile(fileURL, content: content)
+        
+        // Refresh the file list if the created file is in the currently open folder
+        if let root = rootURL, directory == root {
+            self.items = loadContents(of: root)
+        }
+        return fileURL
+    }
+    
+    /// Deletes the file or directory at the specified URL.
+    ///
+    /// - Parameter url: The URL of the item to delete.
+    func deleteFile(at url: URL) {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        
+        do {
+            try FileManager.default.removeItem(at: url)
+            // Refresh list
+            if let root = rootURL {
+                self.items = loadContents(of: root)
+            }
+        } catch {
+            print("Failed to delete item at \(url): \(error)")
+        }
+    }
+    
+    /// Renames a file or directory.
+    ///
+    /// - Parameters:
+    ///   - url: The current URL of the item.
+    ///   - newName: The new name (including extension).
+    func renameFile(at url: URL, to newName: String) {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        
+        let directory = url.deletingLastPathComponent()
+        let newURL = directory.appendingPathComponent(newName)
+        
+        do {
+            try FileManager.default.moveItem(at: url, to: newURL)
+            // Refresh list
+            if let root = rootURL {
+                self.items = loadContents(of: root)
+            }
+        } catch {
+            print("Failed to rename item from \(url) to \(newURL): \(error)")
+        }
+    }
 }

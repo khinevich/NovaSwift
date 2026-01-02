@@ -4,6 +4,26 @@ Native macOS integrated development environment (IDE) specifically built for wri
 
 ![NovaSwift Logo](NovaSwift.png)
 
+## Features
+
+NovaSwift provides a streamlined experience for script development on macOS:
+
+*   **Multi-Language Support:** Write and execute **Swift** (`.swift`) and **Kotlin** (`.kts`) scripts seamlessly.
+*   **Syntax Highlighting:** Native, performant syntax highlighting for keywords, types, strings, and comments in both supported languages.
+*   **Live Output:** View script output (stdout/stderr) in real-time as it executes, perfect for long-running tasks or debugging.
+*   **File Explorer:** Integrated sidebar to browse your project folder, visualize file structures, and recognize language-specific file types.
+*   **File Management:** Open, edit, and **persistently save** your scripts directly from the IDE.
+*   **Sandboxed Security:** Scripts run in a controlled environment with safe file access management.
+
+## Keyboard Shortcuts
+
+Boost your productivity with these built-in shortcuts:
+
+| Action | Shortcut | Description |
+| :--- | :---: | :--- |
+| **Run Script** | `Cmd + R` (⌘R) | Compiles and executes the currently open script. |
+| **Save File** | `Cmd + S` (⌘S) | Saves the current changes to the open file. |
+
 ## Getting Started
 
 ### Prerequisites
@@ -87,10 +107,20 @@ The repository includes several sample scripts in `TestScripts/` to verify IDE f
        * Features: Compiles successfully but crashes at runtime (Index out of bounds).
        * Use case: Verify your tool correctly identifies a non-zero exit code and displays runtime errors (stderr).
 
-6. **(New) Kotlin Test:** Create a file named `hello.kts`:
+6. `TestScripts/Kotlin/Hello.kts`
    ```kotlin
    println("Hello from Kotlin!")
    val list = listOf(1, 2, 3)
    list.forEach { println("Item: $it") }
    ```
    *   **Use case:** Import this file into NovaSwift to verify Kotlin syntax highlighting and execution (ensure `kotlinc` is installed).
+
+7. `TestScripts/Kotlin/LongRunning.kts`
+       * Purpose: Continuous output and buffering test.
+       * Features: Loops with `Thread.sleep` and explicitly flushes stdout.
+       * Use case: Verify that output is displayed in real-time and not buffered until the end of execution.
+
+8. `TestScripts/Kotlin/FileIO.kts`
+       * Purpose: File permissions and I/O test.
+       * Features: Writes to and reads from a file in the current working directory.
+       * Use case: Verify that the script executes in a writable directory (temp dir).
