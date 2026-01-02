@@ -8,10 +8,10 @@
 import SwiftUI
 import AppKit
 
-/// A SwiftUI wrapper around `NSTextView` that provides basic syntax highlighting for Swift code.
+/// A SwiftUI wrapper around `NSTextView` that provides basic syntax highlighting for Swift and Kotlin code.
 ///
 /// This view supports line numbers via a custom `NSRulerView` and applies color attributes
-/// to keywords, types, strings, comments, and other Swift language constructs.
+/// to keywords, types, strings, comments, and other language constructs.
 struct SyntaxHighlightEditor: NSViewRepresentable {
     // MARK: - Bindings
     
@@ -32,7 +32,16 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
     // MARK: - NSViewRepresentable
     
     /// Creates the `NSScrollView` containing the configured `NSTextView`.
+    ///
+    /// This method sets up the `NSTextView` with specific properties to support code editing:
+    /// - Disables rich text.
+    /// - Sets a monospaced font.
+    /// - Enables line numbers via `LineNumberRulerView`.
+    /// - Disables automatic text substitutions (quotes, dashes) which can break code syntax.
     func makeNSView(context: Context) -> NSScrollView {
+        // We use a native NSScrollView + NSTextView backing because SwiftUI's TextEditor
+        // currently lacks support for Attributed Strings (needed for syntax highlighting)
+        // and advanced cursor control.
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
@@ -84,16 +93,15 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
         textView.delegate = context.coordinator
         
         return scrollView
-        
-        textView.textContainer?.widthTracksTextView = true
-        
-        scrollView.documentView = textView
-        textView.delegate = context.coordinator
-        
-        return scrollView
     }
 
     /// Updates the view when SwiftUI state changes.
+    ///
+    /// This method is responsible for syncing the `NSTextView` appearance with the SwiftUI environment:
+    /// - Updates background and text colors based on the theme.
+    /// - Updates font size.
+    /// - Updates the syntax highlighting language configuration.
+    /// - Updates the text content if the binding changes externally.
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
         
@@ -156,17 +164,35 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             self.currentLanguage = parent.language
         }
         
+        /// Updates the coordinator's configuration to match the parent view.
         func updateConfiguration(theme: AppTheme, fontSize: CGFloat, language: Language) {
             self.currentTheme = theme
             self.currentFontSize = fontSize
             self.currentLanguage = language
         }
 
+        /// Called when the text in the `NSTextView` changes.
+        ///
+        /// This method syncs the changes back to the SwiftUI binding and re-applies syntax highlighting.
         func textDidChange(_ notification: Notification) {
-            // ... (existing textDidChange code) ...
+            guard let textView = notification.object as? NSTextView else { return }
+            
+            // 1. Update the SwiftUI Binding
+            parent.text = textView.string
+            // 2. Apply Syntax Highlighting
+            highlightSyntax(in: textView)
+            
+            // 3. Update Line Numbers
+            textView.enclosingScrollView?.verticalRulerView?.needsDisplay = true
         }
         
         /// Applies syntax highlighting attributes to the entire text view content.
+        ///
+        /// This method resets all text attributes to the plain style and then iteratively applies
+        /// regex-based highlighting rules. It handles nested structures like string interpolation
+        /// by re-applying code rules within the interpolation delimiters.
+        ///
+        /// - Parameter textView: The `NSTextView` to highlight.
         func highlightSyntax(in textView: NSTextView) {
             guard let textStorage = textView.textStorage else { return }
             let fullRange = NSRange(location: 0, length: textStorage.length)
@@ -175,8 +201,8 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             let colors = ThemeColors.forTheme(currentTheme)
             
             // --- Helper: Apply Regex ---
+            /// Applies a given regex pattern with a specific color and optional font trait.
             func apply(_ pattern: String, color: NSColor, fontTrait: NSFontDescriptor.SymbolicTraits? = nil, range: NSRange) {
-                // ... (existing apply helper) ...
                 guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return }
                 regex.enumerateMatches(in: string, options: [], range: range) { match, _, _ in
                     if let matchRange = match?.range {
@@ -189,6 +215,7 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             }
             
             // --- Helper: Apply All Code Rules (Keywords, Types, etc.) ---
+            /// Applies all standard language syntax rules (keywords, types, numbers, etc.) within a given range.
             func applyCodeRules(in searchRange: NSRange) {
                 // 1. Keywords
                 let keywords = currentLanguage.keywords
@@ -219,6 +246,7 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             // --- Execution ---
             
             // 1. Reset to plain text (Default Color)
+            // It is crucial to clear existing attributes to avoid color bleeding when text is deleted or modified.
             textStorage.removeAttribute(.foregroundColor, range: fullRange)
             textStorage.addAttribute(.foregroundColor, value: colors.plain, range: fullRange)
             textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: currentFontSize, weight: .regular), range: fullRange)
@@ -227,13 +255,13 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             applyCodeRules(in: fullRange)
             
             // 3. Apply Strings (Overwrites code rules inside strings)
-            let stringPattern = ##""(?:\\.|[^\\"])*""##
+            let stringPattern = ##""(?:\\.|[^\"])*""##
             apply(stringPattern, color: colors.string, range: fullRange)
             
             // 4. Handle String Interpolation: \( ... )
             // Only applicable for Swift currently. Kotlin uses $variable or ${expression}
             if currentLanguage == .swift {
-                let interpolationPattern = ##"\\\((?:[^()]|\([^()]*\))*\)"##
+                let interpolationPattern = ##"\\((?:[^()]|\([^()]*\))*)"##
                 
                 if let regex = try? NSRegularExpression(pattern: interpolationPattern, options: []) {
                     regex.enumerateMatches(in: string, options: [], range: fullRange) { match, _, _ in
@@ -262,6 +290,7 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             }
             
             // 5. Comments (Last)
+            // Comments should override everything else (strings, keywords, etc.) if they appear last in the logic.
             let commentPattern = ##"//.*"##
             apply(commentPattern, color: colors.comment, range: fullRange)
         }

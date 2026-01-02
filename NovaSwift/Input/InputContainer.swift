@@ -10,15 +10,18 @@ internal import UniformTypeIdentifiers
 
 /// A container view responsible for managing the input code, file operations, and execution controls.
 ///
-/// This view holds the state for the source code (`editorText`), the current file name,
-/// and handles file importing logic. It interacts with the `ScriptExecutor` to run the code.
+/// This view acts as the controller for the code editing experience. It holds the state for the
+/// source code (`editorText`), tracks the current file context (`fileName`), and handles actions
+/// like importing files and triggering script execution via the `ScriptExecutor`.
 struct InputContainer: View {
     // MARK: - Dependencies
     
     /// The shared script execution service.
+    /// Used to run the code currently present in the editor.
     var executor: ScriptExecutor
     
     /// The project manager handling file system operations.
+    /// Used for reading file content during import.
     var projectManager: ProjectManager
     
     // MARK: - Bindings
@@ -27,6 +30,7 @@ struct InputContainer: View {
     @Binding var editorText: String
     
     /// The name of the currently loaded file (bound to parent state).
+    /// If `nil`, the editor is in an "Untitled" state.
     @Binding var fileName: String?
     
     // MARK: - Local State
@@ -36,7 +40,10 @@ struct InputContainer: View {
     
     // MARK: - Computed Properties
     
-    /// Determines the language based on the current file name.
+    /// Determines the programming language based on the current file extension.
+    ///
+    /// If `fileName` is `nil` or has an unknown extension, this defaults to `.swift`.
+    /// This property is used to configure the syntax highlighter and the script executor.
     private var currentLanguage: Language {
         guard let fileName = fileName else { return .swift }
         return Language.from(fileName: fileName)
@@ -46,18 +53,19 @@ struct InputContainer: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Top Bar
+            // Top Bar: Contains title, file actions, and execution controls.
             PaneBar {
                 Text("Input")
                     .font(.headline)
                     .foregroundStyle(.secondary)
                     .padding(.trailing, 8)
                 
-                // File Actions
+                // File Actions (Import, Clear)
                 ControlGroup {
                     Button(action: { isImporting = true }) {
                         Label("Import", systemImage: "document.badge.plus")
                     }
+                    // Disable import while a script is running to prevent state conflicts.
                     .disabled(executor.isRunning)
                     
                     Button(action: {
@@ -73,6 +81,7 @@ struct InputContainer: View {
                 Spacer()
                 
                 // File Name Display
+                // Shows the current file name and the detected language context.
                 Text(fileName ?? "Untitled (\(currentLanguage.displayName))")
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -82,7 +91,7 @@ struct InputContainer: View {
                 
                 Spacer()
                 
-                // Execution Control
+                // Execution Control (Run, Stop)
                 ControlGroup {
                     Button(action: {
                         executor.execute(editorText, language: currentLanguage)
@@ -90,6 +99,7 @@ struct InputContainer: View {
                         Label("Run", systemImage: "play.fill")
                             .foregroundStyle(.green)
                     }
+                    // Disable run if text is empty or a script is already running.
                     .disabled(editorText.isEmpty || executor.isRunning)
                     .keyboardShortcut("r", modifiers: .command)
                     
@@ -105,8 +115,11 @@ struct InputContainer: View {
             }
             
             // Editor Area
+            // The main text editor, configured with the detected language.
             InputEditorView(text: $editorText, language: currentLanguage)
         }
+        // Configure the file importer to support all known languages + plain text.
+        // For Kotlin, we explicitly add a UTType for .kts since it's not a standard system type.
         .fileImporter(
             isPresented: $isImporting,
             allowedContentTypes: [.swiftSource, .plainText, UTType(filenameExtension: "kts")!],
@@ -119,6 +132,9 @@ struct InputContainer: View {
     // MARK: - Private Methods
     
     /// Handles the result of a file import operation.
+    ///
+    /// Reads the content of the selected file using `ProjectManager` and updates the
+    /// editor state (`editorText` and `fileName`) on the main thread.
     ///
     /// - Parameter result: The result from the file importer, containing selected URLs or an error.
     private func importFile(result: Result<[URL], Error>) {
