@@ -4,6 +4,55 @@ Native macOS integrated development environment (IDE) specifically built for wri
 
 ![NovaSwift Logo](NovaSwift.png)
 
+## Getting Started
+
+### Running the Application
+
+You can run NovaSwift either using Xcode (recommended for development) or directly from the terminal.
+
+**Option 1: Using Xcode**
+1. Open the project file `NovaSwift.xcodeproj`.
+2. Ensure the `NovaSwift` scheme is selected in the top toolbar.
+3. Select your Mac as the destination.
+4. Press **Command + R** (⌘R) or click the **Run** button (Play icon) in the toolbar.
+
+**Option 2: Using Terminal**
+To build and run the application from the command line:
+
+1. Build the application:
+   ```bash
+   xcodebuild -scheme NovaSwift -destination 'platform=macOS' build
+   ```
+2. Once built, you can open the application bundle (assuming Debug build):
+   ```bash
+   open $(xcodebuild -scheme NovaSwift -destination 'platform=macOS' -showBuildSettings | grep -m 1 "TARGET_BUILD_DIR" | cut -d "=" -f 2 | xargs)/NovaSwift.app
+   ```
+
+---
+
+### Running Tests
+
+NovaSwift includes a suite of unit tests for its core services (`ScriptExecutor`, `ProjectManager`) and models.
+
+**Option 1: From Xcode**
+1. Open `NovaSwift.xcodeproj`.
+2. Press **Command + U** (⌘U) to build and run all tests.
+3. Alternatively, open the **Test Navigator** (Command + 6), find `NovaSwiftTests`, and click the small play button next to individual tests or suites.
+
+**Option 2: From Terminal**
+You can execute the full test suite using `xcodebuild`:
+
+```bash
+xcodebuild test -scheme NovaSwift -destination 'platform=macOS'
+```
+
+This command will compile the project and run all unit tests, reporting pass/fail status directly in the terminal output.
+
+---
+
+## Test Scripts
+
+The repository includes several sample scripts in `TestScripts/` to verify IDE functionality manually:
 
 1. `test_script/easy.swift`
        * Purpose: Basic integration test.
@@ -29,6 +78,3 @@ Native macOS integrated development environment (IDE) specifically built for wri
        * Purpose: Exit code and crash handling test.
        * Features: Compiles successfully but crashes at runtime (Index out of bounds).
        * Use case: Verify your tool correctly identifies a non-zero exit code and displays runtime errors (stderr).
-
-
-swift test_script/easy.swift to see the expected output.

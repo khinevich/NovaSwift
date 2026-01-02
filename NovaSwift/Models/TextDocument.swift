@@ -25,15 +25,25 @@ struct TextDocument: FileDocument {
 
     /// Initializes the document by reading from a file configuration.
     init(configuration: ReadConfiguration) throws {
-        guard let data = configuration.file.regularFileContents,
+        try self.init(fileWrapper: configuration.file)
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        return try createFileWrapper()
+    }
+    
+    // MARK: - Testable Logic
+    
+    init(fileWrapper: FileWrapper) throws {
+        guard let data = fileWrapper.regularFileContents,
               let string = String(data: data, encoding: .utf8)
         else {
             throw CocoaError(.fileReadCorruptFile)
         }
         text = string
     }
-
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+    
+    func createFileWrapper() throws -> FileWrapper {
         let data = text.data(using: .utf8)!
         return FileWrapper(regularFileWithContents: data)
     }

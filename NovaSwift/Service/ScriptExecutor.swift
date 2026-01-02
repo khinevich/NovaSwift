@@ -56,7 +56,7 @@ class ScriptExecutor {
         executionTask = Task {
             // 1. Write Script to Disk
             let tempDirectory = FileManager.default.temporaryDirectory
-            let scriptPath = tempDirectory.appending(path: "script.swift")
+            let scriptPath = tempDirectory.appending(path: "script-\(UUID().uuidString).swift")
             
             do {
                 try script.write(to: scriptPath, atomically: true, encoding: .utf8)
@@ -68,8 +68,8 @@ class ScriptExecutor {
             
             // 2. Configure the Process
             let newProcess = Process()
-            newProcess.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            newProcess.arguments = ["swift", "\(scriptPath.path)"]
+            newProcess.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
+            newProcess.arguments = [scriptPath.path]
             
             // 3. Setup Pipes
             let pipe = Pipe()
@@ -134,6 +134,8 @@ class ScriptExecutor {
                 Task { @MainActor [weak self] in
                     self?.exitCode = Int(p.terminationStatus)
                     self?.isRunning = false
+                    // Cleanup
+                    try? FileManager.default.removeItem(at: scriptPath)
                 }
             }
             
