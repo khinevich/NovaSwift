@@ -10,51 +10,38 @@ internal import UniformTypeIdentifiers
 
 /// A container view responsible for managing the input code, file operations, and execution controls.
 ///
-/// This view acts as the controller for the code editing experience. It holds the state for the
-/// source code (`editorText`), tracks the current file context (`fileName`), and handles actions
-/// like importing files and triggering script execution via the `ScriptExecutor`.
+/// This view acts as the controller for the code editing experience. It leverages `ContentViewModel`
+/// for state management and interacts with the `ScriptExecutor` provided by the view model.
 struct InputContainer: View {
     // MARK: - Dependencies
     
-    /// The shared script execution service.
-    /// Used to run the code currently present in the editor.
-    var executor: ScriptExecutor
-    
-    /// The project manager handling file system operations.
-    /// Used for reading file content during import.
-    var projectManager: ProjectManager
-    
-    // MARK: - Bindings
-    
-    /// The current source code text (bound to parent state).
-    @Binding var editorText: String
-    
-    /// The currently loaded file URL (bound to parent state).
-    /// If `nil`, the editor is in an "Untitled" state.
-    @Binding var currentFile: URL?
-    
-    /// The selected range of the text (cursor position).
-    @Binding var selectedRange: NSRange
+    /// The shared view model managing the application state.
+    var viewModel: ContentViewModel
     
     // MARK: - Local State
     
     /// Tracks the presentation of the file importer sheet.
     @State private var isImporting: Bool = false
     
+    /// Tracks the presentation of the file exporter (Save As) sheet.
+    @State private var isExporting: Bool = false
+    
+    /// The document wrapper for exporting text.
+    @State private var documentToExport: TextDocument?
+    
     // MARK: - Computed Properties
     
     /// Determines the programming language based on the current file extension.
-    ///
-    /// If `currentFile` is `nil` or has an unknown extension, this defaults to `.swift`.
-    /// This property is used to configure the syntax highlighter and the script executor.
     private var currentLanguage: Language {
-        guard let fileName = currentFile?.lastPathComponent else { return .swift }
+        guard let fileName = viewModel.currentFile?.lastPathComponent else { return .swift }
         return Language.from(fileName: fileName)
     }
     
     // MARK: - Body
     
     var body: some View {
+        @Bindable var viewModel = viewModel
+        
         VStack(spacing: 0) {
             // Top Bar: Contains title, file actions, and execution controls.
             PaneBar {
@@ -63,30 +50,39 @@ struct InputContainer: View {
                     .foregroundStyle(.secondary)
                     .padding(.trailing, 8)
                 
-                // File Actions (Import, Clear)
+                // File Actions (Import, Clear, Save)
                 ControlGroup {
                     Button(action: { isImporting = true }) {
                         Label("Import", systemImage: "arrow.up.right")
                     }
                     // Disable import while a script is running to prevent state conflicts.
-                    .disabled(executor.isRunning)
+                    .disabled(viewModel.executor.isRunning)
                     
                     Button(action: {
-                        editorText = ""
-                        currentFile = nil
+                        viewModel.clearEditor()
                     }) {
                         Label("Clear", systemImage: "trash")
                     }
-                    .disabled(editorText.isEmpty)
+                    .disabled(viewModel.editorText.isEmpty)
                     
-                    Button(action: {
-                        if let url = currentFile {
-                            projectManager.saveFile(url, content: editorText)
-                        }
-                    }) {
-                        Label("Save", systemImage: "square.and.arrow.down")
+                    Button("Save As") {
+                        documentToExport = TextDocument(text: viewModel.editorText)
+                        isExporting = true
                     }
-                    .disabled(currentFile == nil)
+                    .disabled(viewModel.editorText.isEmpty)
+                    .keyboardShortcut("S", modifiers: [.command, .shift]) // Shift+Cmd+S for Save As
+                    
+                    // Hidden action for standard Save (Cmd+S)
+                    Button("Save") {
+                        if viewModel.currentFile != nil {
+                            viewModel.saveFile()
+                        } else {
+                            // If no file exists, redirect to Save As
+                            documentToExport = TextDocument(text: viewModel.editorText)
+                            isExporting = true
+                        }
+                    }
+                    .opacity(0) // Hide from UI
                     .keyboardShortcut("s", modifiers: .command)
                 }
                 .controlSize(.large)
@@ -95,7 +91,7 @@ struct InputContainer: View {
                 
                 // File Name Display
                 // Shows the current file name and the detected language context.
-                Text(currentFile?.lastPathComponent ?? "Untitled (\(currentLanguage.displayName))")
+                Text(viewModel.currentFile?.lastPathComponent ?? "Untitled (\(currentLanguage.displayName))")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: 200)
@@ -107,29 +103,29 @@ struct InputContainer: View {
                 // Execution Control (Run, Stop)
                 ControlGroup {
                     Button(action: {
-                        executor.execute(editorText, fileURL: currentFile, language: currentLanguage)
+                        viewModel.executor.execute(viewModel.editorText, fileURL: viewModel.currentFile, language: currentLanguage)
                     }) {
                         Label("Run", systemImage: "play.fill")
                             .foregroundStyle(.green)
                     }
                     // Disable run if text is empty or a script is already running.
-                    .disabled(editorText.isEmpty || executor.isRunning)
+                    .disabled(viewModel.editorText.isEmpty || viewModel.executor.isRunning)
                     .keyboardShortcut("r", modifiers: .command)
                     
                     Button(action: {
-                        executor.stop()
+                        viewModel.executor.stop()
                     }) {
                         Label("Stop", systemImage: "stop.fill")
                             .foregroundStyle(.red)
                     }
-                    .disabled(!executor.isRunning)
+                    .disabled(!viewModel.executor.isRunning)
                 }
                 .controlSize(.large)
             }
             
             // Editor Area
             // The main text editor, configured with the detected language.
-            InputEditorView(text: $editorText, selectedRange: $selectedRange, language: currentLanguage)
+            InputEditorView(text: $viewModel.editorText, selectedRange: $viewModel.selectedRange, language: currentLanguage)
         }
         // Configure the file importer to support all known languages + plain text.
         // For Kotlin, we explicitly add a UTType for .kts since it's not a standard system type.
@@ -138,30 +134,22 @@ struct InputContainer: View {
             allowedContentTypes: [.swiftSource, .plainText, UTType(filenameExtension: "kts")!],
             allowsMultipleSelection: false
         ) { result in
-            importFile(result: result)
+            viewModel.handleFileImport(result: result)
         }
-    }
-    
-    // MARK: - Private Methods
-    
-    /// Handles the result of a file import operation.
-    ///
-    /// Reads the content of the selected file using `ProjectManager` and updates the
-    /// editor state (`editorText` and `currentFile`) on the main thread.
-    ///
-    /// - Parameter result: The result from the file importer, containing selected URLs or an error.
-    private func importFile(result: Result<[URL], Error>) {
-        do {
-            guard let selectedFile: URL = try result.get().first else { return }
-            
-            if let fileContent = projectManager.readFile(selectedFile) {
-                Task { @MainActor in
-                    editorText = fileContent
-                    currentFile = selectedFile
-                }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: documentToExport,
+            contentType: .plainText, // Default type, user can select others if supported by the system dialog
+            defaultFilename: viewModel.currentFile?.lastPathComponent ?? "Untitled"
+        ) { result in
+            switch result {
+            case .success(let url):
+                // Upon successful save, update the current file context to the new file.
+                // The fileExporter handles the actual writing.
+                viewModel.openFile(at: url)
+            case .failure(let error):
+                print("Save failed: \(error.localizedDescription)")
             }
-        } catch {
-            print("Import failed: \(error.localizedDescription)")
         }
     }
 }

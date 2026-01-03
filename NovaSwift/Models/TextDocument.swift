@@ -21,7 +21,9 @@ struct TextDocument: FileDocument {
         self.text = text
     }
 
-    static var readableContentTypes: [UTType] { [.plainText] }
+    static var readableContentTypes: [UTType] {
+        [.plainText, .swiftSource, UTType(filenameExtension: "kts")!]
+    }
 
     /// Initializes the document by reading from a file configuration.
     init(configuration: ReadConfiguration) throws {

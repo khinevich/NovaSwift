@@ -9,45 +9,28 @@ import SwiftUI
 
 /// The root view of the application, orchestrating the main layout and shared state.
 ///
-/// `ContentView` adopts a container/presentational pattern where it holds the
-/// `ScriptExecutor` as the source of truth for execution state and coordinates
-/// the layout between the `InputContainer` and `OutputContainer`.
+/// `ContentView` adopts the MVVM pattern, delegating state management and business logic
+/// to `ContentViewModel`. It coordinates the layout between the Sidebar, Input, and Output modules.
 struct ContentView: View {
-    // MARK: - State Properties
+    // MARK: - View Model
     
-    /// The central service managing script execution, shared across child views.
-    @State private var executor = ScriptExecutor()
-    
-    /// The project manager handling file system operations.
-    @State private var projectManager = ProjectManager()
-    
-    /// Controls the presentation of the settings sheet.
-    @State private var isSettingsPresented = false
-    
-    /// Controls the presentation of the info sheet.
-    @State private var isInfoPresented = false
-    
-    /// Controls the visibility of the sidebar.
-    @State private var isSidebarVisible = false
-    
-    // MARK: - Editor State
-    // Lifted from InputContainer to allow sharing with Sidebar
-    @State private var editorText: String = ""
-    @State private var currentFile: URL?
-    @State private var selectedRange: NSRange = NSRange(location: 0, length: 0)
+    /// The central view model managing the application state and services.
+    @State private var viewModel = ContentViewModel()
     
     // MARK: - Body
     
     var body: some View {
+        @Bindable var viewModel = viewModel
+        
         NavigationStack {
             VStack(spacing: 0) {
                 HSplitView {
                     // Sidebar Pane
-                    if isSidebarVisible {
+                    if viewModel.isSidebarVisible {
                         SidebarView(
-                            projectManager: projectManager,
-                            selectedFileContent: $editorText,
-                            currentFile: $currentFile
+                            projectManager: viewModel.projectManager,
+                            selectedFileContent: $viewModel.editorText,
+                            currentFile: $viewModel.currentFile
                         )
                         .frame(minWidth: 200, maxWidth: 300, maxHeight: .infinity)
                         .layoutPriority(0)
@@ -56,18 +39,12 @@ struct ContentView: View {
                     // Main Split: Input & Output
                     HSplitView {
                         // Input Container
-                        InputContainer(
-                            executor: executor,
-                            projectManager: projectManager,
-                            editorText: $editorText,
-                            currentFile: $currentFile,
-                            selectedRange: $selectedRange
-                        )
-                        .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
-                        .layoutPriority(1)
+                        InputContainer(viewModel: viewModel)
+                            .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
+                            .layoutPriority(1)
                         
                         // Output Container
-                        OutputContainer(executor: executor)
+                        OutputContainer(executor: viewModel.executor)
                             .frame(minWidth: 200, maxWidth: .infinity, maxHeight: .infinity)
                             .layoutPriority(1)
                     }
@@ -79,19 +56,19 @@ struct ContentView: View {
                 
                 // Bottom Bar: Status
                 StatusBarView(
-                    isRunning: executor.isRunning,
-                    isWaitingForInput: executor.isWaitingForInput,
-                    exitCode: executor.exitCode
+                    isRunning: viewModel.executor.isRunning,
+                    isWaitingForInput: viewModel.executor.isWaitingForInput,
+                    exitCode: viewModel.executor.exitCode
                 )
             }
             .navigationTitle("NovaSwift")
             .onOpenURL { url in
-                handleIncomingURL(url)
+                viewModel.handleIncomingURL(url)
             }
             .toolbar {
                 // Sidebar Toggle (Left side)
                 ToolbarItem(placement: .navigation) {
-                    Button(action: { isSidebarVisible.toggle() }) {
+                    Button(action: { viewModel.isSidebarVisible.toggle() }) {
                         Label("Toggle Sidebar", systemImage: "sidebar.left")
                     }
                 }
@@ -100,92 +77,34 @@ struct ContentView: View {
                     ShareButton(
                         title: "Share",
                         systemImage: "square.and.arrow.up",
-                        content: executor.output,
-                        isEnabled: !executor.isRunning && !executor.output.isEmpty
+                        content: viewModel.executor.output,
+                        isEnabled: !viewModel.executor.isRunning && !viewModel.executor.output.isEmpty
                     )
                     .frame(width: 30, height: 30)
                 }
                 
                 ToolbarItem(placement: .primaryAction) {
-                    Button(action: { isSettingsPresented = true }) {
+                    Button(action: { viewModel.isSettingsPresented = true }) {
                         Label("Settings", systemImage: "gearshape")
                     }
                 }
                 
                 ToolbarItem(placement: .primaryAction) {
-                    Button(action: { isInfoPresented = true }) {
+                    Button(action: { viewModel.isInfoPresented = true }) {
                         Label("Info", systemImage: "info.circle")
                     }
                 }
             }
-            .sheet(isPresented: $isSettingsPresented) {
+            .sheet(isPresented: $viewModel.isSettingsPresented) {
                 SettingsView()
             }
-            .sheet(isPresented: $isInfoPresented) {
+            .sheet(isPresented: $viewModel.isInfoPresented) {
                 InfoView()
             }
         }
-    }
-    func handleIncomingURL(_ url: URL) {
-        guard url.scheme == "novaswift", url.host == "jump" else { return }
-        
-        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
-              let queryItems = components.queryItems else { return }
-        
-        let filePath = queryItems.first(where: { $0.name == "file" })?.value
-        let line = queryItems.first(where: { $0.name == "line" })?.value.flatMap(Int.init)
-        let col = queryItems.first(where: { $0.name == "col" })?.value.flatMap(Int.init)
-        
-        if let path = filePath {
-            let fileURL = URL(fileURLWithPath: path)
-            // If it's a different file, open it first
-            if currentFile != fileURL {
-                if let content = projectManager.readFile(fileURL) {
-                    self.editorText = content
-                    self.currentFile = fileURL
-                }
-            }
-        }
-        
-        if let line = line {
-            // Give a small delay to ensure the editor has loaded the new text if needed
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                scrollToLocation(line: line, column: col ?? 1)
-                
-                // CRITICAL: Reset the range slightly after scrolling so that clicking the same link again
-                // (which sets selectedRange to the same value) is still detected as a state change
-                // in the SwiftUI data flow for child views.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.selectedRange = NSRange(location: NSNotFound, length: 0)
-                }
-            }
-        }
-    }
-    
-    func scrollToLocation(line: Int, column: Int) {
-        // Convert line/column to character index
-        // Lines are 1-based, columns are 1-based
-        let lines = editorText.components(separatedBy: .newlines)
-        
-        guard line > 0 && line <= lines.count else { return }
-        
-        var location = 0
-        // Sum up lengths of previous lines
-        for i in 0..<(line - 1) {
-            location += lines[i].utf16.count + 1 // +1 for newline
-        }
-        
-        // Add column offset (1-based to 0-based)
-        let targetLineLength = lines[line - 1].utf16.count
-        let colIndex = max(0, min(column - 1, targetLineLength))
-        location += colIndex
-        
-        // Setting selectedRange triggers the jump in InputContainer
-        self.selectedRange = NSRange(location: location, length: 0)
     }
 }
 
 #Preview {
     ContentView()
 }
-
