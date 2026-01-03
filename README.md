@@ -1,4 +1,4 @@
-# NovaSwift
+# NovaSwift 1.1
 
 Native macOS integrated development environment (IDE) specifically built for writing and executing Swift and Kotlin scripts with high performance and a modern user interface.
 
@@ -49,6 +49,7 @@ Boost your productivity with these built-in shortcuts:
 | :--- | :---: | :--- |
 | **Run Script** | `Cmd + R` (⌘R) | Compiles and executes the currently open script. |
 | **Save File** | `Cmd + S` (⌘S) | Saves the current changes to the open file. |
+| **Save As** | `Shift + Cmd + S` (⇧⌘S) | Saves the current script to a new file. |
 | **Increase Font** | `Cmd + +` | Increases the editor font size. |
 | **Decrease Font** | `Cmd + -` | Decreases the editor font size. |
 
@@ -118,3 +119,5 @@ The repository includes several sample scripts in `TestScripts/` to verify IDE f
 6. `TestScripts/Kotlin/Hello.kts`: Basic Kotlin execution test.
 7. `TestScripts/Kotlin/InputTest.kts`: Kotlin interaction and `readln()` support.
 8. `TestScripts/Kotlin/FileIO.kts`: Kotlin file I/O permissions test.
+
+---
