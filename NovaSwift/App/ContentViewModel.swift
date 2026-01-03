@@ -32,6 +32,9 @@ class ContentViewModel {
     /// The URL of the currently open file. `nil` represents an untitled document.
     var currentFile: URL?
     
+    /// The language selected by the user for the current untitled file.
+    var untitledLanguage: Language = .swift
+    
     /// The selected range within the editor text.
     var selectedRange: NSRange = NSRange(location: 0, length: 0)
     

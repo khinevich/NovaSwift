@@ -32,8 +32,11 @@ struct InputContainer: View {
     // MARK: - Computed Properties
     
     /// Determines the programming language based on the current file extension.
+    /// Returns the user-selected language for untitled files.
     private var currentLanguage: Language {
-        guard let fileName = viewModel.currentFile?.lastPathComponent else { return .swift }
+        guard let fileName = viewModel.currentFile?.lastPathComponent else { 
+            return viewModel.untitledLanguage 
+        }
         return Language.from(fileName: fileName)
     }
     
@@ -65,9 +68,11 @@ struct InputContainer: View {
                     }
                     .disabled(viewModel.editorText.isEmpty)
                     
-                    Button("Save As") {
+                    Button(action: {
                         documentToExport = TextDocument(text: viewModel.editorText)
                         isExporting = true
+                    }) {
+                        Label("Save As", systemImage: "square.and.arrow.down")
                     }
                     .disabled(viewModel.editorText.isEmpty)
                     .keyboardShortcut("S", modifiers: [.command, .shift]) // Shift+Cmd+S for Save As
@@ -89,14 +94,27 @@ struct InputContainer: View {
                 
                 Spacer()
                 
-                // File Name Display
-                // Shows the current file name and the detected language context.
-                Text(viewModel.currentFile?.lastPathComponent ?? "Untitled (\(currentLanguage.displayName))")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: 200)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                // File Name & Language Selection
+                HStack(spacing: 8) {
+                    if let file = viewModel.currentFile {
+                        Text(file.lastPathComponent)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Untitled")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                        
+                        Picker("", selection: $viewModel.untitledLanguage) {
+                            ForEach(Language.allCases) { lang in
+                                Text(lang.displayName).tag(lang)
+                            }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                    }
+                }
+                .frame(maxWidth: 200)
                 
                 Spacer()
                 

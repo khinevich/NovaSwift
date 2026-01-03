@@ -292,11 +292,13 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             // We use two patterns: one for closed strings, one for unterminated strings (for typing feedback).
             
             // 4a. Closed Strings
-            let stringPattern = ##""(?:\\.|[^"\\\n\\])*""##
+            // We use hex escapes to avoid ambiguity: \x22 is ", \x5C is \, \x0A is Newline
+            let stringPattern = "\"(?:\\\\.|[^\\x22\\x5C\\x0A])*\""
             apply(stringPattern, color: colors.string, range: fullRange)
             
             // 4b. Unterminated Strings (Match from quote to end of line)
-            let unterminatedStringPattern = ##""(?:\\.|[^"\\\n\\])*$"##
+            // Matches a quote followed by non-terminators until the end of the line/string
+            let unterminatedStringPattern = "\"(?:\\\\.|[^\\x22\\x5C\\x0A])*$"
             apply(unterminatedStringPattern, color: colors.string, range: fullRange)
             
             // 4c. Apply Escape Sequences (inside strings)
