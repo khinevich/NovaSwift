@@ -49,6 +49,17 @@ class ContentViewModel {
     /// Controls the visibility of the sidebar.
     var isSidebarVisible = false
     
+    // MARK: - Output State
+    
+    /// Tracks whether the output export sheet is presented.
+    var isOutputExporting = false
+    
+    /// The document wrapper for exporting output text.
+    var outputExportDocument: TextDocument?
+    
+    /// Buffer for user input to stdin.
+    var outputInputText: String = ""
+    
     // MARK: - Initialization
     
     /// Initializes the view model with injected dependencies.
@@ -102,6 +113,25 @@ class ContentViewModel {
         }
     }
     
+    // MARK: - Output Actions
+    
+    /// Prepares the output content for export by creating a `TextDocument`.
+    func prepareOutputExport() {
+        outputExportDocument = TextDocument(text: executor.output)
+        isOutputExporting = true
+    }
+    
+    /// Sends the current input text to the running script's standard input.
+    func sendInputToExecutor() {
+        executor.sendInput(outputInputText + "\n")
+        outputInputText = ""
+    }
+    
+    /// Clears the console output.
+    func clearOutput() {
+        executor.clearOutput()
+    }
+
     // MARK: - URL Handling
     
     /// Handles incoming URLs (e.g., from deep links) to navigate to specific files and lines.

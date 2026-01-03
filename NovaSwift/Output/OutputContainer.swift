@@ -15,23 +15,14 @@ internal import UniformTypeIdentifiers
 struct OutputContainer: View {
     // MARK: - Dependencies
     
-    /// The shared script execution service, observed for output updates.
-    @Bindable var executor: ScriptExecutor
-    
-    // MARK: - Local State
-    
-    /// Tracks the presentation of the file exporter sheet.
-    @State private var isExporting: Bool = false
-    
-    /// The document wrapper for exporting text.
-    @State private var exportDocument: TextDocument?
-    
-    /// Buffer for user input to stdin.
-    @State private var inputText: String = ""
+    /// The shared view model managing the application state.
+    var viewModel: ContentViewModel
     
     // MARK: - Body
     
     var body: some View {
+        @Bindable var viewModel = viewModel
+        
         VStack(spacing: 0) {
             // Top Bar
             PaneBar {
@@ -45,40 +36,38 @@ struct OutputContainer: View {
                 ControlGroup {
                     // Clear Button
                     Button(action: {
-                        executor.clearOutput()
+                        viewModel.clearOutput()
                     }) {
                         Label("Clear", systemImage: "trash")
                     }
-                    .disabled(executor.output.isEmpty)
+                    .disabled(viewModel.executor.output.isEmpty)
                     
                     // Save Button
                     Button(action: {
-                        exportDocument = TextDocument(text: executor.output)
-                        isExporting = true
+                        viewModel.prepareOutputExport()
                     }) {
                         Label("Save", systemImage: "tray.and.arrow.down.fill")
                     }
-                    .disabled(executor.isRunning || executor.output.isEmpty)
+                    .disabled(viewModel.executor.isRunning || viewModel.executor.output.isEmpty)
                 }
                 .controlSize(.large)
             }
             
             // Output Display
-            OutputConsoleView(text: executor.attributedOutput)
+            OutputConsoleView(text: viewModel.executor.attributedOutput)
             
             // Input Field (Only when awaiting input)
-            if executor.isRunning && executor.isWaitingForInput {
+            if viewModel.executor.isRunning && viewModel.executor.isWaitingForInput {
                 HStack {
                     Text(">")
                         .font(.system(.body, design: .monospaced))
                         .foregroundStyle(.secondary)
                     
-                    TextField("Type input and press Enter to send it...", text: $inputText)
+                    TextField("Type input and press Enter to send it...", text: $viewModel.outputInputText)
                         .font(.system(.body, design: .monospaced))
                         .textFieldStyle(.plain)
                         .onSubmit {
-                            executor.sendInput(inputText + "\n")
-                            inputText = ""
+                            viewModel.sendInputToExecutor()
                         }
                 }
                 .padding(.horizontal, 8)
@@ -88,8 +77,8 @@ struct OutputContainer: View {
             }
         }
         .fileExporter(
-            isPresented: $isExporting,
-            document: exportDocument,
+            isPresented: $viewModel.isOutputExporting,
+            document: viewModel.outputExportDocument,
             contentType: .plainText,
             defaultFilename: "Output.txt"
         ) { result in

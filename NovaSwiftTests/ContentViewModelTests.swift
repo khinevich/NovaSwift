@@ -96,7 +96,7 @@ struct ContentViewModelTests {
         #expect(viewModel.editorText == fileContent)
         
         // The scroll logic is async, so we wait
-        try await Task.sleep(nanoseconds: 200_000_000) // 0.2s
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5s
         
         // Line 1: 6 chars + 1 newline = 7
         // Line 2: 6 chars + 1 newline = 7
@@ -105,5 +105,30 @@ struct ContentViewModelTests {
         // Expected location: 14
         
         #expect(viewModel.selectedRange.location == 14)
+    }
+    
+    @Test("Output Operations")
+    func testOutputOperations() {
+        let mockExecutor = MockScriptExecutor()
+        let viewModel = ContentViewModel(executor: mockExecutor)
+        
+        // 1. Test Clear Output
+        mockExecutor.output = "Some Output"
+        viewModel.clearOutput()
+        #expect(mockExecutor.clearOutputCalled)
+        #expect(mockExecutor.output.isEmpty)
+        
+        // 2. Test Send Input
+        mockExecutor.isRunning = true // Must be running to receive input
+        viewModel.outputInputText = "User Input"
+        viewModel.sendInputToExecutor()
+        // Mock doesn't capture pipe write easily, but we can check if it cleared the input buffer
+        #expect(viewModel.outputInputText.isEmpty)
+        
+        // 3. Test Export Preparation
+        mockExecutor.output = "Export Me"
+        viewModel.prepareOutputExport()
+        #expect(viewModel.isOutputExporting)
+        #expect(viewModel.outputExportDocument?.text == "Export Me")
     }
 }

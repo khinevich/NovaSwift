@@ -44,7 +44,7 @@ struct ContentView: View {
                             .layoutPriority(1)
                         
                         // Output Container
-                        OutputContainer(executor: viewModel.executor)
+                        OutputContainer(viewModel: viewModel)
                             .frame(minWidth: 200, maxWidth: .infinity, maxHeight: .infinity)
                             .layoutPriority(1)
                     }
