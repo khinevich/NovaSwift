@@ -15,16 +15,11 @@ struct InfoView: View {
             if let appIcon = NSImage(named: NSImage.applicationIconName) {
                 Image(nsImage: appIcon)
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 80, height: 80)
-                    .padding(.top, 20)
+                    .iconStyle()
             } else {
                 Image(systemName: "swift")
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 80, height: 80)
-                    .foregroundStyle(.orange)
-                    .padding(.top, 20)
+                    .iconStyle()
             }
             
             VStack(spacing: 8) {
@@ -69,6 +64,11 @@ struct InfoView: View {
     }
 }
 
+extension Image {
+    func iconStyle(size: CGFloat = 80) -> some View {
+        self.modifier(InfoViewModifier(size: size))
+    }
+}
 #Preview {
     InfoView()
 }
