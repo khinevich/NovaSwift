@@ -68,3 +68,4 @@ class MockProjectManager: ProjectManager {
         mockFileContent[url] = content
     }
 }
+

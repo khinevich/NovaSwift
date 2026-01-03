@@ -19,15 +19,27 @@ Native macOS integrated development environment (IDE) specifically built for wri
 
 NovaSwift provides a streamlined experience for script development on macOS:
 
+### Core Functionality
 *   **Multi-Language Support:** Write and execute **Swift** (`.swift`) and **Kotlin** (`.kts`) scripts seamlessly.
 *   **Interactive Scripts:** Support for standard input (`stdin`). A dedicated input field appears automatically when a script is waiting for your input.
-*   **System Notifications:** Receive macOS desktop notifications when a script is waiting for input (e.g., `"InputTest.swift requires your attention"`), even if the app is in the background.
-*   **Intelligent Status:** The status bar uses heuristics to detect when a script is likely waiting for input (e.g., lines ending in `:` or `?`), updating its state to "Awaiting for the user input".
-*   **Unbuffered Real-time Output:** Child processes run with `NSUnbufferedIO` enabled, ensuring that prompts and log messages appear instantly without needing manual `fflush` calls in your code.
-*   **Enhanced Error Navigation:** Click on any error in the console (e.g., `main.swift:10:5`) to jump directly to that line. NovaSwift automatically opens the referenced file if it's not already active.
-*   **Syntax Highlighting:** Native, performant syntax highlighting for keywords, types, strings, and comments in both supported languages.
-*   **File Explorer:** Integrated sidebar to browse your project folder, visualize file structures, and recognize language-specific file types.
-*   **Settings & Customization:** Configure your environment with support for Dark/Light mode, adjustable font sizes, and custom paths for Swift and Kotlin executables.
+*   **Unbuffered Real-time Output:** Child processes run with `NSUnbufferedIO` enabled, ensuring that prompts and log messages appear instantly.
+*   **System Notifications:** Receive macOS desktop notifications when a script is waiting for input, even if the app is in the background.
+
+### Project Management
+*   **File Explorer:** Integrated sidebar to browse your project folder.
+*   **File Operations:** **Create**, **Rename**, and **Delete** files directly from the sidebar context menu.
+*   **Language Recognition:** Specific icons for Swift and Kotlin files for easy identification.
+
+### Editor & UI
+*   **Syntax Highlighting:** Native, performant syntax highlighting for keywords, types, strings, and comments.
+*   **Enhanced Error Navigation:** Click on any error in the console (e.g., `main.swift:10:5`) to jump directly to that line.
+*   **Customizable Editor:** Adjust **Font Size** dynamically (`Cmd +`, `Cmd -`) or via Settings.
+*   **Theme Support:** Choose between **Light** and **Dark** modes in Settings.
+*   **Sharing:** Share your script output logs directly via the system share sheet (AirDrop, Messages, etc.).
+
+### Configuration
+*   **Custom Executables:** Manually specify paths for `swift` and `kotlinc` in Settings if they are not in standard locations.
+*   **Notification Management:** Manage notification permissions directly from the app.
 
 ## Keyboard Shortcuts
 
@@ -62,9 +74,9 @@ You can run NovaSwift either using Xcode (recommended for development) or direct
 
 **Option 1: Using Xcode**
 1. Open the project file `NovaSwift.xcodeproj`.
-2. Ensure the `NovaSwift` scheme is selected in the top toolbar.
+2. Ensure the `NovaSwift` scheme is selected.
 3. Select your Mac as the destination.
-4. Press **Command + R** (⌘R) or click the **Run** button (Play icon) in the toolbar.
+4. Press **Command + R** (⌘R) to run.
 
 **Option 2: Using Terminal**
 To build and run the application from the command line:
@@ -73,7 +85,7 @@ To build and run the application from the command line:
    ```bash
    xcodebuild -scheme NovaSwift -destination 'platform=macOS' build
    ```
-2. Once built, you can open the application bundle (assuming Debug build):
+2. Open the application bundle:
    ```bash
    open $(xcodebuild -scheme NovaSwift -destination 'platform=macOS' -showBuildSettings | grep -m 1 "TARGET_BUILD_DIR" | cut -d "=" -f 2 | xargs)/NovaSwift.app
    ```
@@ -85,18 +97,12 @@ To build and run the application from the command line:
 NovaSwift includes a suite of unit tests for its core services (`ScriptExecutor`, `ProjectManager`) and models.
 
 **Option 1: From Xcode**
-1. Open `NovaSwift.xcodeproj`.
-2. Press **Command + U** (⌘U) to build and run all tests.
-3. Alternatively, open the **Test Navigator** (Command + 6), find `NovaSwiftTests`, and click the small play button next to individual tests or suites.
+Press **Command + U** (⌘U) to build and run all tests.
 
 **Option 2: From Terminal**
-You can execute the full test suite using `xcodebuild`:
-
 ```bash
 xcodebuild test -scheme NovaSwift -destination 'platform=macOS'
 ```
-
-This command will compile the project and run all unit tests, reporting pass/fail status directly in the terminal output.
 
 ---
 
@@ -104,45 +110,11 @@ This command will compile the project and run all unit tests, reporting pass/fai
 
 The repository includes several sample scripts in `TestScripts/` to verify IDE functionality manually:
 
-1. `TestScripts/Swift/InputTest.swift`
-       * Purpose: Test **Interactive Scripts** and **Notifications**.
-       * Features: Uses `readLine()` to wait for input.
-       * Use case: Verify the "Awaiting input" status and system notifications.
-
-2. `TestScripts/Swift/Medium.swift`
-       * Purpose: Intermediate logic test.
-       * Features: Writes to a temporary file, reads it back, and performs JSON encoding using Codable.
-       * Use case: Verify the tool handles filesystem permissions and more complex library imports (Foundation).
-
-3. `TestScripts/Swift/Hard.swift`
-       * Purpose: Concurrency and UI responsiveness test.
-       * Features: Spawns background threads using DispatchQueue, uses sleep() to simulate delay, and prints heartbeat messages from the main thread.
-       * Use case: Critical for testing "Live Output" to ensure your UI updates in real-time and doesn't block while waiting for the script to finish.
-
-4. `TestScripts/Swift/ErrorCompile.swift`
-       * Purpose: Syntax highlighting and parsing test.
-       * Features: Contains a deliberate syntax error (unclosed string).
-       * Use case: Verify your "Error Location" feature (e.g., clickable error messages like line 6: error).
-
-5. `TestScripts/Swift/ErrorRuntime.swift`
-       * Purpose: Exit code and crash handling test.
-       * Features: Compiles successfully but crashes at runtime (Index out of bounds).
-       * Use case: Verify your tool correctly identifies a non-zero exit code and displays runtime errors (stderr).
-
-6. `TestScripts/Kotlin/Hello.kts`
-   ```kotlin
-   println("Hello from Kotlin!")
-   val list = listOf(1, 2, 3)
-   list.forEach { println("Item: $it") }
-   ```
-   *   **Use case:** Import this file into NovaSwift to verify Kotlin syntax highlighting and execution (ensure `kotlinc` is installed).
-
-7. `TestScripts/Kotlin/InputTest.kts`
-       * Purpose: Kotlin interaction test.
-       * Features: Uses `readln()` to wait for input.
-       * Use case: Verify Kotlin stdin support and unbuffered output.
-
-8. `TestScripts/Kotlin/FileIO.kts`
-       * Purpose: File permissions and I/O test.
-       * Features: Writes to and reads from a file in the current working directory.
-       * Use case: Verify that the script executes in a writable directory (temp dir).
+1. `TestScripts/Swift/InputTest.swift`: Verifies interactive input (`stdin`) and notifications.
+2. `TestScripts/Swift/Medium.swift`: Tests filesystem permissions and Codable.
+3. `TestScripts/Swift/Hard.swift`: Tests concurrency (background threads) and unbuffered UI updates.
+4. `TestScripts/Swift/ErrorCompile.swift`: Verifies syntax highlighting and error clicking.
+5. `TestScripts/Swift/ErrorRuntime.swift`: Verifies runtime crash handling and stderr output.
+6. `TestScripts/Kotlin/Hello.kts`: Basic Kotlin execution test.
+7. `TestScripts/Kotlin/InputTest.kts`: Kotlin interaction and `readln()` support.
+8. `TestScripts/Kotlin/FileIO.kts`: Kotlin file I/O permissions test.

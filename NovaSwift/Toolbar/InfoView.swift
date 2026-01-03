@@ -31,7 +31,7 @@ struct InfoView: View {
                 Text("NovaSwift")
                     .font(.system(size: 40, weight: .bold)) // ~1.5x Title
                 
-                Text("Version 1.0.0")
+                Text("Version 1.1")
                     .font(.system(size: 24)) // ~1.5x Body
                     .foregroundStyle(.secondary)
             }
