@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-import SwiftUI
 import UserNotifications
 
 struct SettingsView: View {
@@ -16,10 +15,10 @@ struct SettingsView: View {
     @AppStorage("customSwiftPath") private var customSwiftPath: String = ""
     @AppStorage("customKotlinPath") private var customKotlinPath: String = ""
     
-    @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
+    @State private var settingsModel = SettingsModel()
     
     @Environment(\.dismiss) var dismiss
-
+    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -52,21 +51,21 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Status")
                                 .font(.system(size: 18))
-                            Text(statusText)
+                            Text(settingsModel.statusText)
                                 .font(.caption)
-                                .foregroundStyle(statusColor)
+                                .foregroundStyle(settingsModel.statusColor)
                         }
                         
                         Spacer()
                         
-                        if notificationStatus == .notDetermined {
+                        if settingsModel.notificationStatus == .notDetermined {
                             Button("Request Permission") {
-                                requestPermission()
+                                settingsModel.requestPermission()
                             }
                             .buttonStyle(.borderedProminent)
-                        } else if notificationStatus == .denied {
+                        } else if settingsModel.notificationStatus == .denied {
                             Button("Open Settings") {
-                                openSystemSettings()
+                                settingsModel.openSystemSettings()
                             }
                             .buttonStyle(.bordered)
                         }
@@ -76,7 +75,7 @@ struct SettingsView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 16)
                 .onAppear {
-                    checkNotificationStatus()
+                    settingsModel.checkNotificationStatus()
                 }
                 
                 Divider()
@@ -129,8 +128,7 @@ struct SettingsView: View {
                     }
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, 16)
-                .padding(.bottom, 16)
+                .padding([.top, .bottom], 16)
                 
                 Divider()
                 
@@ -154,7 +152,7 @@ struct SettingsView: View {
                         TextField("/path/to/swift", text: $customSwiftPath)
                             .textFieldStyle(.roundedBorder)
                         
-                        Text("Detected: \(resolvePath(for: "swift"))")
+                        Text("Detected: \(settingsModel.resolvePath(for: "swift"))")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
@@ -166,7 +164,7 @@ struct SettingsView: View {
                         TextField("/path/to/kotlinc", text: $customKotlinPath)
                             .textFieldStyle(.roundedBorder)
                         
-                        Text("Detected: \(resolvePath(for: "kotlinc"))")
+                        Text("Detected: \(settingsModel.resolvePath(for: "kotlinc"))")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
@@ -180,9 +178,8 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .padding(.top, 8)
                 }
-                .padding(.horizontal, 24)
+                .padding([.horizontal, .bottom], 24)
                 .padding(.top, 16)
-                .padding(.bottom, 24)
             }
         }
         .frame(width: 350, height: 500)
@@ -193,52 +190,6 @@ struct SettingsView: View {
                 }
             }
         }
-    }
-    
-    private var statusText: String {
-        switch notificationStatus {
-        case .authorized: return "Authorized"
-        case .denied: return "Denied (Enable in System Settings)"
-        case .notDetermined: return "Not Determined"
-        case .provisional: return "Provisional"
-        case .ephemeral: return "Ephemeral"
-        @unknown default: return "Unknown"
-        }
-    }
-    
-    private var statusColor: Color {
-        switch notificationStatus {
-        case .authorized: return .green
-        case .denied: return .red
-        default: return .secondary
-        }
-    }
-    
-    private func checkNotificationStatus() {
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
-            DispatchQueue.main.async {
-                self.notificationStatus = settings.authorizationStatus
-            }
-        }
-    }
-    
-    private func requestPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
-            checkNotificationStatus()
-        }
-    }
-    
-    private func openSystemSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
-            NSWorkspace.shared.open(url)
-        }
-    }
-    
-    private func resolvePath(for name: String) -> String {
-        if let url = ScriptExecutor.findExecutable(named: name) {
-            return url.path
-        }
-        return "Not found"
     }
 }
 
