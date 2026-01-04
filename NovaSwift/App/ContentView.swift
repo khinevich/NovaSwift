@@ -74,13 +74,12 @@ struct ContentView: View {
                 }
                 
                 ToolbarItem(placement: .primaryAction) {
-                    ShareButton(
-                        title: "Share",
-                        systemImage: "square.and.arrow.up",
-                        content: viewModel.executor.output,
-                        isEnabled: !viewModel.executor.isRunning && !viewModel.executor.output.isEmpty
-                    )
-                    .frame(width: 30, height: 30)
+                    // This replaces your entire file
+                    
+                    ShareLink(item: ScriptOutputExport(content: viewModel.executor.output), preview: SharePreview("Output.txt", image: Image(systemName: "doc.text"))) {
+                        Image(systemName: "square.and.arrow.up") // Standard macOS Share Icon
+                    } // Lazy Creation: The file Output.txt is only created when the user clicks share
+                    .disabled(viewModel.executor.isRunning || viewModel.executor.output.isEmpty)
                 }
                 
                 ToolbarItem(placement: .primaryAction) {
