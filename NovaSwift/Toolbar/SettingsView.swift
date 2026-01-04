@@ -9,25 +9,33 @@ import SwiftUI
 
 import UserNotifications
 
+/// A view that allows the user to configure application settings such as appearance, notifications, and executable paths.
 struct SettingsView: View {
+    /// The currently selected app theme (light or dark). Persisted in `UserDefaults`.
     @AppStorage("appTheme") private var currentTheme: AppTheme = .dark
+    
+    /// The font size for the editor. Persisted in `UserDefaults`.
     @AppStorage("editorFontSize") private var fontSize: Double = 14.0
+    
+    /// The custom path for the Swift executable. Persisted in `UserDefaults`.
     @AppStorage("customSwiftPath") private var customSwiftPath: String = ""
+    
+    /// The custom path for the Kotlin executable. Persisted in `UserDefaults`.
     @AppStorage("customKotlinPath") private var customKotlinPath: String = ""
     
+    /// The view model managing settings logic.
     @State private var settingsModel = SettingsModel()
     
+    /// The environment value for dismissing the current presentation.
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // Appearance
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Appearance")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(.secondary)
-                    
                     Toggle("Dark Mode", isOn: Binding(
                         get: { currentTheme == .dark },
                         set: { currentTheme = $0 ? .dark : .light }
@@ -35,18 +43,15 @@ struct SettingsView: View {
                     .toggleStyle(.switch)
                     .font(.system(size: 18))
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 24)
+                .padding([.horizontal, .top], 24)
                 .padding(.bottom, 16)
                 
                 Divider()
                 
-                // Notifications
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Notifications")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(.secondary)
-                    
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Status")
@@ -72,20 +77,17 @@ struct SettingsView: View {
                     }
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, 16)
-                .padding(.bottom, 16)
+                .padding([.top, .bottom], 16)
                 .onAppear {
                     settingsModel.checkNotificationStatus()
                 }
                 
                 Divider()
                 
-                // Editor Text Size
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Editor Text Size")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(.secondary)
-                    
                     HStack {
                         Text("\(Int(fontSize)) pt")
                             .font(.system(size: 18, design: .monospaced))
@@ -172,7 +174,9 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("To find the correct path, run:")
                         Text("`which swift`")
+                            .foregroundStyle(.white)
                         Text("`which kotlinc`")
+                            .foregroundStyle(.white)
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
