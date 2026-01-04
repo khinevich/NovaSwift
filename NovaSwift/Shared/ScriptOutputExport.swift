@@ -9,9 +9,18 @@ import Foundation
 import SwiftUI
 internal import UniformTypeIdentifiers
 
+/// A wrapper that enables script output to be shared as a file.
+///
+/// `ScriptOutputExport` takes a standard string and prepares it for system sharing (AirDrop, Mail, etc.)
+/// by treating it as a distinct text document (e.g., `Output.txt`).
+///
+/// This is used primarily by `ShareLink` to ensure the content is attached as a file rather than
+/// copied as plain text.
 struct ScriptOutputExport: Transferable {
+    /// The text content to be exported.
     let content: String
     
+    /// The configuration for converting the content to a file representation.
     static var transferRepresentation: some TransferRepresentation {
         // when sharing, treat as a plain text file
         FileRepresentation(contentType: .plainText) { exportedData in
