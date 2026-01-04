@@ -16,7 +16,7 @@ struct InputContainer: View {
     // MARK: - Dependencies
     
     /// The shared view model managing the application state.
-    var viewModel: ContentViewModel
+    var model: ContentViewModel
     
     // MARK: - Local State
     
@@ -34,8 +34,8 @@ struct InputContainer: View {
     /// Determines the programming language based on the current file extension.
     /// Returns the user-selected language for untitled files.
     private var currentLanguage: Language {
-        guard let fileName = viewModel.currentFile?.lastPathComponent else { 
-            return viewModel.untitledLanguage 
+        guard let fileName = model.currentFile?.lastPathComponent else { 
+            return model.untitledLanguage 
         }
         return Language.from(fileName: fileName)
     }
@@ -43,7 +43,7 @@ struct InputContainer: View {
     // MARK: - Body
     
     var body: some View {
-        @Bindable var viewModel = viewModel
+        @Bindable var viewModel = model
         
         VStack(spacing: 0) {
             // Top Bar: Contains title, file actions, and execution controls.

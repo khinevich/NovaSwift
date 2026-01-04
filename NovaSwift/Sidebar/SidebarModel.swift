@@ -2,7 +2,7 @@
 //  SidebarViewModel.swift
 //  NovaSwift
 //
-//  Created by Gemini on 02.01.26.
+//  Created by Mikhail Khinevich on 02.01.26.
 //
 
 import SwiftUI

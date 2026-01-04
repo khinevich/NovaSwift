@@ -2,7 +2,7 @@
 //  ContentViewModel.swift
 //  NovaSwift
 //
-//  Created by Gemini on 03.01.26.
+//  Created by Mikhail Khinevich on 03.01.26.
 //
 
 import SwiftUI
@@ -160,7 +160,7 @@ class ContentViewModel {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 self.scrollToLocation(line: line, column: col ?? 1)
                 
-                // CRITICAL: Reset the range slightly after scrolling
+                // Reset the range slightly after scrolling
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     self.selectedRange = NSRange(location: NSNotFound, length: 0)
                 }

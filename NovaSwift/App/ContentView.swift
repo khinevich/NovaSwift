@@ -9,42 +9,43 @@ import SwiftUI
 
 /// The root view of the application, orchestrating the main layout and shared state.
 ///
-/// `ContentView` adopts the MVVM pattern, delegating state management and business logic
+/// `ContentView` adopts the MV pattern, delegating state management and business logic
 /// to `ContentViewModel`. It coordinates the layout between the Sidebar, Input, and Output modules.
 struct ContentView: View {
     // MARK: - View Model
     
     /// The central view model managing the application state and services.
-    @State private var viewModel = ContentViewModel()
+    @State private var model = ContentViewModel()
     
     // MARK: - Body
     
     var body: some View {
-        @Bindable var viewModel = viewModel
+        @Bindable var model = model
         
         NavigationStack {
             VStack(spacing: 0) {
+                // Main horizontal split view dividing Sidebar and Content
                 HSplitView {
-                    // Sidebar Pane
-                    if viewModel.isSidebarVisible {
+                    // Sidebar Pane: Displays the file explorer
+                    if model.isSidebarVisible {
                         SidebarView(
-                            projectManager: viewModel.projectManager,
-                            selectedFileContent: $viewModel.editorText,
-                            currentFile: $viewModel.currentFile
+                            projectManager: model.projectManager,
+                            selectedFileContent: $model.editorText,
+                            currentFile: $model.currentFile
                         )
                         .frame(minWidth: 200, maxWidth: 300, maxHeight: .infinity)
                         .layoutPriority(0)
                     }
                     
-                    // Main Split: Input & Output
+                    // Content Split: Input Editor & Output Console
                     HSplitView {
-                        // Input Container
-                        InputContainer(viewModel: viewModel)
+                        // Input Area: Code editor
+                        InputContainer(model: model)
                             .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
                             .layoutPriority(1)
                         
-                        // Output Container
-                        OutputContainer(viewModel: viewModel)
+                        // Output Area: Console logs and script output
+                        OutputContainer(model: model)
                             .frame(minWidth: 200, maxWidth: .infinity, maxHeight: .infinity)
                             .layoutPriority(1)
                     }
@@ -54,50 +55,44 @@ struct ContentView: View {
                 
                 Divider()
                 
-                // Bottom Bar: Status
+                // Bottom Status Bar: Shows execution state
                 StatusBarView(
-                    isRunning: viewModel.executor.isRunning,
-                    isWaitingForInput: viewModel.executor.isWaitingForInput,
-                    exitCode: viewModel.executor.exitCode
+                    isRunning: model.executor.isRunning,
+                    isWaitingForInput: model.executor.isWaitingForInput,
+                    exitCode: model.executor.exitCode
                 )
             }
             .navigationTitle("NovaSwift")
+            // Handle deep links for file navigation
             .onOpenURL { url in
-                viewModel.handleIncomingURL(url)
+                model.handleIncomingURL(url)
             }
             .toolbar {
                 // Sidebar Toggle (Left side)
                 ToolbarItem(placement: .navigation) {
-                    Button(action: { viewModel.isSidebarVisible.toggle() }) {
+                    Button(action: { model.isSidebarVisible.toggle() }) {
                         Label("Toggle Sidebar", systemImage: "sidebar.left")
                     }
                 }
-                
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
                     // This replaces your entire file
-                    
-                    ShareLink(item: ScriptOutputExport(content: viewModel.executor.output), preview: SharePreview("Output.txt", image: Image(systemName: "doc.text"))) {
+                    ShareLink(item: ScriptOutputExport(content: model.executor.output), preview: SharePreview("Output.txt", image: Image(systemName: "doc.text"))) {
                         Image(systemName: "square.and.arrow.up") // Standard macOS Share Icon
                     } // Lazy Creation: The file Output.txt is only created when the user clicks share
-                    .disabled(viewModel.executor.isRunning || viewModel.executor.output.isEmpty)
-                }
-                
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: { viewModel.isSettingsPresented = true }) {
+                    .disabled(model.executor.isRunning || model.executor.output.isEmpty)
+                    
+                    Button(action: { model.isSettingsPresented = true }) {
                         Label("Settings", systemImage: "gearshape")
                     }
-                }
-                
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: { viewModel.isInfoPresented = true }) {
+                    Button(action: { model.isInfoPresented = true }) {
                         Label("Info", systemImage: "info.circle")
                     }
                 }
             }
-            .sheet(isPresented: $viewModel.isSettingsPresented) {
+            .sheet(isPresented: $model.isSettingsPresented) {
                 SettingsView()
             }
-            .sheet(isPresented: $viewModel.isInfoPresented) {
+            .sheet(isPresented: $model.isInfoPresented) {
                 InfoView()
             }
         }

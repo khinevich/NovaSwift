@@ -2,7 +2,7 @@
 //  ConsoleTextView.swift
 //  NovaSwift
 //
-//  Created by NovaSwift AI on 30.12.25.
+//  Created by Mikhail Khinevich on 30.12.25.
 //
 
 import SwiftUI

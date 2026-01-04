@@ -16,12 +16,12 @@ struct OutputContainer: View {
     // MARK: - Dependencies
     
     /// The shared view model managing the application state.
-    var viewModel: ContentViewModel
+    var model: ContentViewModel
     
     // MARK: - Body
     
     var body: some View {
-        @Bindable var viewModel = viewModel
+        @Bindable var viewModel = model
         
         VStack(spacing: 0) {
             // Top Bar
