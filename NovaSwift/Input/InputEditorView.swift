@@ -27,23 +27,16 @@ struct InputEditorView: View {
     /// Defaults to `.swift`.
     var language: Language = .swift
     
-    // MARK: - Settings
-    
-    /// The current application theme (Light/Dark), retrieved from `AppStorage`.
-    @AppStorage("appTheme") private var currentTheme: AppTheme = .dark
-    
-    /// The font size for the editor, retrieved from `AppStorage`.
-    @AppStorage("editorFontSize") private var fontSize: Double = 14.0
+    @Environment(AppSettings.self) private var settings
     
     // MARK: - Body
     
     var body: some View {
         ZStack(alignment: .topLeading) {
             // Placeholder Text
-            // Displayed only when the editor text is empty to guide the user.
             if text.isEmpty {
                 Text("Write or import your code here...")
-                    .font(.system(size: fontSize, weight: .regular, design: .monospaced))
+                    .font(.system(size: settings.fontSize, weight: .regular, design: .monospaced))
                     .foregroundColor(Color(white: 0.4))
                     .padding(.leading, 45) // Match ruler width + padding
                     .padding(.top, 10)     // Match text container inset
@@ -52,7 +45,7 @@ struct InputEditorView: View {
             }
             
             // The core editor component handling text input and syntax highlighting.
-            SyntaxHighlightEditor(text: $text, selectedRange: $selectedRange, fontSize: fontSize, theme: currentTheme, language: language)
+            SyntaxHighlightService(text: $text, selectedRange: $selectedRange, fontSize: settings.fontSize, theme: settings.theme, language: language)
                 .padding(0)
                 .clipped()
         }

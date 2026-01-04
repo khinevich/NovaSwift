@@ -16,13 +16,11 @@ struct OutputContainer: View {
     // MARK: - Dependencies
     
     /// The shared view model managing the application state.
-    var model: ContentViewModel
+    @Bindable var model: ContentViewModel
     
     // MARK: - Body
     
     var body: some View {
-        @Bindable var viewModel = model
-        
         VStack(spacing: 0) {
             // Top Bar
             PaneBar {
@@ -34,40 +32,37 @@ struct OutputContainer: View {
                 Spacer()
                 
                 ControlGroup {
-                    // Clear Button
                     Button(action: {
-                        viewModel.clearOutput()
+                        model.clearOutput()
                     }) {
                         Label("Clear", systemImage: "trash")
                     }
-                    .disabled(viewModel.executor.output.isEmpty)
+                    .disabled(model.executor.output.isEmpty)
                     
-                    // Save Button
                     Button(action: {
-                        viewModel.prepareOutputExport()
+                        model.prepareOutputExport()
                     }) {
                         Label("Save", systemImage: "tray.and.arrow.down.fill")
                     }
-                    .disabled(viewModel.executor.isRunning || viewModel.executor.output.isEmpty)
+                    .disabled(model.executor.isRunning || model.executor.output.isEmpty)
                 }
                 .controlSize(.large)
             }
-            
-            // Output Display
-            OutputConsoleView(text: viewModel.executor.attributedOutput)
+        
+            OutputConsoleView(text: model.executor.attributedOutput)
             
             // Input Field (Only when awaiting input)
-            if viewModel.executor.isRunning && viewModel.executor.isWaitingForInput {
+            if model.executor.isRunning && model.executor.isWaitingForInput {
                 HStack {
                     Text(">")
                         .font(.system(.body, design: .monospaced))
                         .foregroundStyle(.secondary)
                     
-                    TextField("Type input and press Enter to send it...", text: $viewModel.outputInputText)
+                    TextField("Type input and press Enter to send it...", text: $model.outputInputText)
                         .font(.system(.body, design: .monospaced))
                         .textFieldStyle(.plain)
                         .onSubmit {
-                            viewModel.sendInputToExecutor()
+                            model.sendInputToExecutor()
                         }
                 }
                 .padding(.horizontal, 8)
@@ -76,12 +71,7 @@ struct OutputContainer: View {
                 .overlay(Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor)), alignment: .top)
             }
         }
-        .fileExporter(
-            isPresented: $viewModel.isOutputExporting,
-            document: viewModel.outputExportDocument,
-            contentType: .plainText,
-            defaultFilename: "Output.txt"
-        ) { result in
+        .fileExporter(isPresented: $model.isOutputExporting, document: model.outputExportDocument, contentType: .plainText, defaultFilename: "Output.txt") { result in
             if case .failure(let error) = result {
                 print("Export failed: \(error.localizedDescription)")
             }

@@ -19,6 +19,9 @@ struct NovaSwiftApp: App {
     /// This state object is retained for the lifetime of the app to manage notification interactions.
     @State private var delegate = NotificationDelegate()
     
+    /// Singleton for app settings
+    @State private var settings = AppSettings.shared
+    
     /// Initializes the application.
     ///
     /// The initializer requests authorization for local notifications and assigns the
@@ -36,6 +39,8 @@ struct NovaSwiftApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(settings)
+                .preferredColorScheme(settings.theme == .dark ? .dark : .light)
         }
         .windowToolbarStyle(.unified)
         .handlesExternalEvents(matching: ["novaswift"])

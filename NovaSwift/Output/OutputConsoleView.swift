@@ -17,15 +17,12 @@ struct OutputConsoleView: View {
     /// The text content to display in the console.
     let text: AttributedString
     
-    // MARK: - Settings
-    
-    @AppStorage("appTheme") private var currentTheme: AppTheme = .dark
-    @AppStorage("editorFontSize") private var fontSize: Double = 14.0
-    
+    @Environment(AppSettings.self) private var settings
+        
     // MARK: - Body
     
     var body: some View {
-        ConsoleTextView(attributedText: text, fontSize: fontSize, theme: currentTheme)
+        ConsoleTextView(attributedText: text, fontSize: settings.fontSize, theme: settings.theme)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

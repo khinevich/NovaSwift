@@ -12,7 +12,7 @@ import AppKit
 ///
 /// This view supports line numbers via a custom `NSRulerView` and applies color attributes
 /// to keywords, types, strings, comments, and other language constructs.
-struct SyntaxHighlightEditor: NSViewRepresentable {
+struct SyntaxHighlightService: NSViewRepresentable {
     // MARK: - Bindings
     
     /// The source code text to be edited.
@@ -168,12 +168,12 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
     
     /// Coordinating class responsible for handling text changes and applying syntax highlighting.
     class Coordinator: NSObject, NSTextViewDelegate {
-        var parent: SyntaxHighlightEditor
+        var parent: SyntaxHighlightService
         var currentTheme: AppTheme
         var currentFontSize: CGFloat
         var currentLanguage: Language
 
-        init(_ parent: SyntaxHighlightEditor) {
+        init(_ parent: SyntaxHighlightService) {
             self.parent = parent
             self.currentTheme = parent.theme
             self.currentFontSize = parent.fontSize

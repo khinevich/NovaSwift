@@ -11,17 +11,7 @@ import UserNotifications
 
 /// A view that allows the user to configure application settings such as appearance, notifications, and executable paths.
 struct SettingsView: View {
-    /// The currently selected app theme (light or dark). Persisted in `UserDefaults`.
-    @AppStorage("appTheme") private var currentTheme: AppTheme = .dark
-    
-    /// The font size for the editor. Persisted in `UserDefaults`.
-    @AppStorage("editorFontSize") private var fontSize: Double = 14.0
-    
-    /// The custom path for the Swift executable. Persisted in `UserDefaults`.
-    @AppStorage("customSwiftPath") private var customSwiftPath: String = ""
-    
-    /// The custom path for the Kotlin executable. Persisted in `UserDefaults`.
-    @AppStorage("customKotlinPath") private var customKotlinPath: String = ""
+    @Environment(AppSettings.self) private var settings
     
     /// The view model managing settings logic.
     @State private var settingsModel = SettingsModel()
@@ -30,6 +20,8 @@ struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
+        @Bindable var settings = settings
+        
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 12) {
@@ -37,8 +29,8 @@ struct SettingsView: View {
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(.secondary)
                     Toggle("Dark Mode", isOn: Binding(
-                        get: { currentTheme == .dark },
-                        set: { currentTheme = $0 ? .dark : .light }
+                        get: { settings.theme == .dark },
+                        set: { settings.theme = $0 ? .dark : .light }
                     ))
                     .toggleStyle(.switch)
                     .font(.system(size: 18))
@@ -89,7 +81,7 @@ struct SettingsView: View {
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(.secondary)
                     HStack {
-                        Text("\(Int(fontSize)) pt")
+                        Text("\(Int(settings.fontSize)) pt")
                             .font(.system(size: 18, design: .monospaced))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
@@ -100,7 +92,7 @@ struct SettingsView: View {
                         
                         HStack(spacing: 0) {
                             Button(action: {
-                                if fontSize > 8 { fontSize -= 1 }
+                                if settings.fontSize > 8 { settings.fontSize -= 1 }
                             }) {
                                 Image(systemName: "minus")
                                     .font(.system(size: 18))
@@ -112,7 +104,7 @@ struct SettingsView: View {
                                 .frame(height: 24)
                             
                             Button(action: {
-                                if fontSize < 48 { fontSize += 1 }
+                                if settings.fontSize < 48 { settings.fontSize += 1 }
                             }) {
                                 Image(systemName: "plus")
                                     .font(.system(size: 18))
@@ -151,7 +143,7 @@ struct SettingsView: View {
                         Text("Swift Path")
                             .font(.callout)
                             .foregroundStyle(.primary)
-                        TextField("/path/to/swift", text: $customSwiftPath)
+                        TextField("/path/to/swift", text: $settings.swiftPath)
                             .textFieldStyle(.roundedBorder)
                         
                         Text("Detected: \(settingsModel.resolvePath(for: "swift"))")
@@ -163,7 +155,7 @@ struct SettingsView: View {
                         Text("Kotlin Path")
                             .font(.callout)
                             .foregroundStyle(.primary)
-                        TextField("/path/to/kotlinc", text: $customKotlinPath)
+                        TextField("/path/to/kotlinc", text: $settings.kotlinPath)
                             .textFieldStyle(.roundedBorder)
                         
                         Text("Detected: \(settingsModel.resolvePath(for: "kotlinc"))")
@@ -199,4 +191,5 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
+        .environment(AppSettings.shared)
 }

@@ -16,7 +16,7 @@ struct InputContainer: View {
     // MARK: - Dependencies
     
     /// The shared view model managing the application state.
-    var model: ContentViewModel
+    @Bindable var model: ContentViewModel
     
     // MARK: - Local State
     
@@ -40,13 +40,11 @@ struct InputContainer: View {
         return Language.from(fileName: fileName)
     }
     
-    // MARK: - Body
+    // MARK: - View
     
     var body: some View {
-        @Bindable var viewModel = model
-        
         VStack(spacing: 0) {
-            // Top Bar: Contains title, file actions, and execution controls.
+            // Top Bar: title, file actions, and execution controls.
             PaneBar {
                 Text("Input")
                     .font(.headline)
@@ -58,37 +56,35 @@ struct InputContainer: View {
                     Button(action: { isImporting = true }) {
                         Label("Import", systemImage: "arrow.up.right")
                     }
-                    // Disable import while a script is running to prevent state conflicts.
-                    .disabled(viewModel.executor.isRunning)
+                    .disabled(model.executor.isRunning)
                     
                     Button(action: {
-                        viewModel.clearEditor()
+                        model.clearEditor()
                     }) {
                         Label("Clear", systemImage: "trash")
                     }
-                    .disabled(viewModel.editorText.isEmpty)
+                    .disabled(model.editorText.isEmpty)
                     
                     Button(action: {
-                        documentToExport = TextDocument(text: viewModel.editorText)
+                        documentToExport = TextDocument(text: model.editorText)
                         isExporting = true
                     }) {
                         Label("Save As", systemImage: "square.and.arrow.down")
                     }
-                    .disabled(viewModel.editorText.isEmpty)
-                    .keyboardShortcut("S", modifiers: [.command, .shift]) // Shift+Cmd+S for Save As
+                    .disabled(model.editorText.isEmpty)
+                    .keyboardShortcut("S", modifiers: [.command, .shift]) // Shift+Cmd+S
                     
-                    // Hidden action for standard Save (Cmd+S)
                     Button("Save") {
-                        if viewModel.currentFile != nil {
-                            viewModel.saveFile()
+                        if model.currentFile != nil {
+                            model.saveFile()
                         } else {
                             // If no file exists, redirect to Save As
-                            documentToExport = TextDocument(text: viewModel.editorText)
+                            documentToExport = TextDocument(text: model.editorText)
                             isExporting = true
                         }
                     }
-                    .opacity(0) // Hide from UI
-                    .keyboardShortcut("s", modifiers: .command)
+                    .opacity(0)
+                    .keyboardShortcut("s", modifiers: .command) // Cmd+S
                 }
                 .controlSize(.large)
                 
@@ -96,7 +92,7 @@ struct InputContainer: View {
                 
                 // File Name & Language Selection
                 HStack(spacing: 8) {
-                    if let file = viewModel.currentFile {
+                    if let file = model.currentFile {
                         Text(file.lastPathComponent)
                             .font(.callout)
                             .foregroundStyle(.secondary)
@@ -105,7 +101,7 @@ struct InputContainer: View {
                             .font(.callout)
                             .foregroundStyle(.secondary)
                         
-                        Picker("", selection: $viewModel.untitledLanguage) {
+                        Picker("", selection: $model.untitledLanguage) {
                             ForEach(Language.allCases) { lang in
                                 Text(lang.displayName).tag(lang)
                             }
@@ -121,50 +117,39 @@ struct InputContainer: View {
                 // Execution Control (Run, Stop)
                 ControlGroup {
                     Button(action: {
-                        viewModel.executor.execute(viewModel.editorText, fileURL: viewModel.currentFile, language: currentLanguage)
+                        model.executor.execute(model.editorText, fileURL: model.currentFile, language: currentLanguage)
                     }) {
                         Label("Run", systemImage: "play.fill")
                             .foregroundStyle(.green)
                     }
-                    // Disable run if text is empty or a script is already running.
-                    .disabled(viewModel.editorText.isEmpty || viewModel.executor.isRunning)
+                    .disabled(model.editorText.isEmpty || model.executor.isRunning)
                     .keyboardShortcut("r", modifiers: .command)
                     
                     Button(action: {
-                        viewModel.executor.stop()
+                        model.executor.stop()
                     }) {
                         Label("Stop", systemImage: "stop.fill")
                             .foregroundStyle(.red)
                     }
-                    .disabled(!viewModel.executor.isRunning)
+                    .disabled(!model.executor.isRunning)
                 }
                 .controlSize(.large)
             }
             
-            // Editor Area
             // The main text editor, configured with the detected language.
-            InputEditorView(text: $viewModel.editorText, selectedRange: $viewModel.selectedRange, language: currentLanguage)
+            InputEditorView(text: $model.editorText, selectedRange: $model.selectedRange, language: currentLanguage)
         }
-        // Configure the file importer to support all known languages + plain text.
-        // For Kotlin, we explicitly add a UTType for .kts since it's not a standard system type.
-        .fileImporter(
-            isPresented: $isImporting,
-            allowedContentTypes: [.swiftSource, .plainText, UTType(filenameExtension: "kts")!],
-            allowsMultipleSelection: false
-        ) { result in
-            viewModel.handleFileImport(result: result)
+        // configure the file importer to support all known languages + plain text
+        // for Kotlin, explicitly add a UTType for .kts since it's not a standard system type.
+        .fileImporter(isPresented: $isImporting, allowedContentTypes: [.swiftSource, .plainText, UTType(filenameExtension: "kts")!], allowsMultipleSelection: false) { result in
+            model.handleFileImport(result: result)
         }
-        .fileExporter(
-            isPresented: $isExporting,
-            document: documentToExport,
-            contentType: .plainText, // Default type, user can select others if supported by the system dialog
-            defaultFilename: viewModel.currentFile?.lastPathComponent ?? "Untitled"
-        ) { result in
+        .fileExporter(isPresented: $isExporting, document: documentToExport, contentType: .plainText, // Default type, user can select others if supported by the system dialog
+            defaultFilename: model.currentFile?.lastPathComponent ?? "Untitled") { result in
             switch result {
             case .success(let url):
                 // Upon successful save, update the current file context to the new file.
-                // The fileExporter handles the actual writing.
-                viewModel.openFile(at: url)
+                model.openFile(at: url)
             case .failure(let error):
                 print("Save failed: \(error.localizedDescription)")
             }
