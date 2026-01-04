@@ -21,7 +21,7 @@ struct SidebarView: View {
     // MARK: - View Model
     
     /// The view model managing the sidebar's state and logic.
-    @State private var viewModel: SidebarViewModel
+    @State private var viewModel: SidebarModel
     
     // MARK: - Bindings
     
@@ -39,7 +39,7 @@ struct SidebarView: View {
     // MARK: - Initialization
     
     init(projectManager: ProjectManager, selectedFileContent: Binding<String>, currentFile: Binding<URL?>) {
-        self._viewModel = State(initialValue: SidebarViewModel(projectManager: projectManager))
+        self._viewModel = State(initialValue: SidebarModel(projectManager: projectManager))
         self._selectedFileContent = selectedFileContent
         self._currentFile = currentFile
     }
@@ -91,7 +91,7 @@ struct SidebarView: View {
                             Image(systemName: "doc")
                                 .foregroundColor(.gray)
                         }
-                        
+                
                         // Inline Renaming vs Text Display
                         if viewModel.renamingItemId == item.id {
                             TextField("Name", text: $viewModel.editingName)
@@ -100,13 +100,37 @@ struct SidebarView: View {
                                     viewModel.completeRename(item: item)
                                     isRenaming = false
                                 }
+                                .onChange(of: isRenaming, perform: { newValue in
+                                    if !newValue && viewModel.renamingItemId == item.id {
+                                        viewModel.completeRename(item: item)
+                                    }
+                                })
+                                .onExitCommand {
+                                    viewModel.renamingItemId = nil // Cancel without saving
+                                    isRenaming = false
+                                }
                                 .textFieldStyle(.plain)
                                 .padding(2)
                                 .background(Color.secondary.opacity(0.2))
                                 .cornerRadius(4)
                         } else {
                             Text(item.name)
-                                .foregroundColor(currentFile == item.url ? .primary : .primary)
+                                .foregroundColor(currentFile == item.url ? .primary : .secondary)
+                                .contentShape(Rectangle()) // Makes the whole row clickable, not just the text
+                                .onTapGesture { // Selection (Click)
+                                    currentFile = item.url
+                                }
+                                .background { // "Enter to Rename" (Keyboard)
+                                    // "Ghost" Button: Only exists if this row is selected
+                                    if currentFile == item.url {
+                                        Button("RenameShortcut") {
+                                            viewModel.startRenaming(item)
+                                            isRenaming = true // trigger focus immediately
+                                        }
+                                        .keyboardShortcut(.return, modifiers: []) // ↵ Key
+                                        .opacity(0)
+                                    }
+                                }
                         }
                         Spacer()
                     }
@@ -117,7 +141,6 @@ struct SidebarView: View {
                             .fill(currentFile == item.url && viewModel.renamingItemId != item.id ? Color.blue.opacity(0.2) : Color.clear)
                     )
                     .contentShape(Rectangle())
-                    // Context Menu
                     .contextMenu {
                         Button("Rename") {
                             viewModel.startRenaming(item)
@@ -125,6 +148,7 @@ struct SidebarView: View {
                         }
                         
                         Button("Show in Finder") {
+                            // standard, built-in AppKit API, to open Finder
                             NSWorkspace.shared.activateFileViewerSelecting([item.url])
                         }
                         
@@ -134,7 +158,6 @@ struct SidebarView: View {
                             viewModel.deleteItem(item, currentFile: $currentFile, contentBinding: $selectedFileContent)
                         }
                     }
-                    // Tap to Open
                     .onTapGesture {
                         if viewModel.renamingItemId == nil {
                             if !item.isDirectory {
@@ -145,7 +168,6 @@ struct SidebarView: View {
                 }
                 .listStyle(.sidebar)
             } else {
-                // Empty State
                 ContentUnavailableView {
                     Label("No Folder Opened", systemImage: "folder")
                 } description: {
@@ -161,11 +183,7 @@ struct SidebarView: View {
             }
         }
         .frame(maxHeight: .infinity)
-        .fileImporter(
-            isPresented: $viewModel.isImporterPresented,
-            allowedContentTypes: [.folder],
-            allowsMultipleSelection: false
-        ) { result in
+        .fileImporter(isPresented: $viewModel.isImporterPresented, allowedContentTypes: [.folder], allowsMultipleSelection: false) { result in
             switch result {
             case .success(let urls):
                 if let url = urls.first {
@@ -176,4 +194,10 @@ struct SidebarView: View {
             }
         }
     }
+}
+
+#Preview {
+    @Previewable @State var selectedFileContent: String = "test.swift"
+    @Previewable @State var currentFile: URL? = nil
+    SidebarView(projectManager: ProjectManager(), selectedFileContent: $selectedFileContent, currentFile: $currentFile)
 }

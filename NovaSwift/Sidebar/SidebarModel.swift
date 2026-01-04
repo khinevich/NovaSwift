@@ -16,7 +16,7 @@ import Combine
 /// - Logic for creating new files and handling deletions.
 @MainActor
 @Observable
-class SidebarViewModel {
+class SidebarModel {
     // MARK: - Dependencies
     
     /// The project manager responsible for file system data.

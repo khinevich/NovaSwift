@@ -29,7 +29,7 @@ struct SidebarViewModelTests {
         defer { try? fileManager.removeItem(at: tempDir) }
         
         await projectManager.openFolder(tempDir)
-        let viewModel = await SidebarViewModel(projectManager: projectManager)
+        let viewModel = await SidebarModel(projectManager: projectManager)
         
         // Action
         await viewModel.createNewFile()
@@ -63,7 +63,7 @@ struct SidebarViewModelTests {
         defer { try? fileManager.removeItem(at: tempDir) }
         
         await projectManager.openFolder(tempDir)
-        let viewModel = await SidebarViewModel(projectManager: projectManager)
+        let viewModel = await SidebarModel(projectManager: projectManager)
         
         // Create first "Untitled"
         await viewModel.createNewFile()
@@ -94,7 +94,7 @@ struct SidebarViewModelTests {
         try "content".write(to: fileURL, atomically: true, encoding: .utf8)
         
         await projectManager.openFolder(tempDir)
-        let viewModel = await SidebarViewModel(projectManager: projectManager)
+        let viewModel = await SidebarModel(projectManager: projectManager)
         
         // Get the item
         let item = await MainActor.run {
@@ -158,7 +158,7 @@ struct SidebarViewModelTests {
         try "content".write(to: fileURL, atomically: true, encoding: .utf8)
         
         await projectManager.openFolder(tempDir)
-        let viewModel = await SidebarViewModel(projectManager: projectManager)
+        let viewModel = await SidebarModel(projectManager: projectManager)
         
         // Run interaction on MainActor
         await MainActor.run {
@@ -213,7 +213,7 @@ struct SidebarViewModelTests {
         try expectedContent.write(to: fileURL, atomically: true, encoding: .utf8)
         
         await projectManager.openFolder(tempDir)
-        let viewModel = await SidebarViewModel(projectManager: projectManager)
+        let viewModel = await SidebarModel(projectManager: projectManager)
         
         await MainActor.run {
             guard let item = projectManager.items.first else {
