@@ -38,11 +38,6 @@ class ProjectManager {
         let accessing = url.startAccessingSecurityScopedResource()
         defer {
             if accessing {
-                // We don't stop accessing immediately if we want to read files later, 
-                // but for listing we might need to keep it open or manage permissions carefully.
-                // In a real app, we'd manage scope lifecycle more robustly.
-                // For this listing implementation, we'll stop accessing after listing 
-                // and re-access when reading a specific file.
                 url.stopAccessingSecurityScopedResource()
             }
         }
@@ -79,7 +74,7 @@ class ProjectManager {
                 ))
             }
             
-            // Sort: Directories first, then files. Alphabetical within groups.
+            // Sort: Directories first, then files. Alphabetical within groups
             return loadedItems.sorted {
                 if $0.isDirectory != $1.isDirectory {
                     return $0.isDirectory

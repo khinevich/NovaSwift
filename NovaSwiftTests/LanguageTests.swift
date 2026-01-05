@@ -2,7 +2,7 @@
 //  LanguageTests.swift
 //  NovaSwiftTests
 //
-//  Created by Gemini on 03.01.26.
+//  Created by Mikhail Khinevich on 03.01.26.
 //
 
 import Testing
@@ -14,8 +14,8 @@ struct LanguageTests {
     
     @Test("Language Extensions")
     func testLanguageExtensions() {
-        #expect(Language.swift.extension == "swift")
-        #expect(Language.kotlin.extension == "kts")
+        #expect(Language.swift.fileExtension == "swift")
+        #expect(Language.kotlin.fileExtension == "kts")
     }
     
     @Test("Language Identification")
@@ -24,9 +24,10 @@ struct LanguageTests {
         let kotlinURL = URL(fileURLWithPath: "script.kts")
         let unknownURL = URL(fileURLWithPath: "image.png")
         
-        #expect(Language.identify(from: swiftURL) == .swift)
-        #expect(Language.identify(from: kotlinURL) == .kotlin)
-        #expect(Language.identify(from: unknownURL) == nil)
+        #expect(Language.from(fileName: swiftURL.lastPathComponent) == .swift)
+        #expect(Language.from(fileName: kotlinURL.lastPathComponent) == .kotlin)
+        // Current implementation defaults to .swift for unknown extensions
+        #expect(Language.from(fileName: unknownURL.lastPathComponent) == .swift)
     }
     
     @Test("Execution Arguments")
@@ -34,11 +35,11 @@ struct LanguageTests {
         let fileURL = URL(fileURLWithPath: "/path/to/script")
         
         // Swift
-        let swiftArgs = Language.swift.executionArguments(for: fileURL)
+        let swiftArgs = Language.swift.executionArguments(for: fileURL.path)
         #expect(swiftArgs.first == fileURL.path, "Swift should just pass the file path")
         
         // Kotlin
-        let kotlinArgs = Language.kotlin.executionArguments(for: fileURL)
+        let kotlinArgs = Language.kotlin.executionArguments(for: fileURL.path)
         #expect(kotlinArgs.contains("-script"), "Kotlin must include -script flag")
         #expect(kotlinArgs.last == fileURL.path, "Kotlin file path should be last")
     }

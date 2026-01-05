@@ -2,7 +2,7 @@
 //  Mocks.swift
 //  NovaSwiftTests
 //
-//  Created by Gemini on 03.01.26.
+//  Created by Mikhail Khinevich on 03.01.26.
 //
 
 import Foundation
@@ -10,7 +10,7 @@ import Foundation
 
 // MARK: - Mock Script Executor
 
-class MockScriptExecutor: ScriptExecutor {
+class MockScriptExecutor: ScriptExecutor, @unchecked Sendable {
     var executeCalled = false
     var lastExecutedScript: String?
     var lastExecutedFileURL: URL?
@@ -41,7 +41,7 @@ class MockScriptExecutor: ScriptExecutor {
 
 // MARK: - Mock Project Manager
 
-class MockProjectManager: ProjectManager {
+class MockProjectManager: ProjectManager, @unchecked Sendable {
     var readFileCalled = false
     var lastReadURL: URL?
     var mockFileContent: [URL: String] = [:]
@@ -68,4 +68,3 @@ class MockProjectManager: ProjectManager {
         mockFileContent[url] = content
     }
 }
-

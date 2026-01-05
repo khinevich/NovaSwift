@@ -2,7 +2,7 @@
 //  ContentViewModelTests.swift
 //  NovaSwiftTests
 //
-//  Created by Gemini on 03.01.26.
+//  Created by Mikhail Khinevich on 03.01.26.
 //
 
 import Testing

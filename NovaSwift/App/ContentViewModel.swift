@@ -159,11 +159,6 @@ class ContentViewModel {
             // Give a small delay to ensure the editor has loaded the new text if needed
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 self.scrollToLocation(line: line, column: col ?? 1)
-                
-                // Reset the range slightly after scrolling
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.selectedRange = NSRange(location: NSNotFound, length: 0)
-                }
             }
         }
     }
