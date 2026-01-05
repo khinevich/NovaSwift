@@ -1,17 +1,6 @@
-# NovaSwift 1.1
+# NovaSwift 1.2
 
 Native macOS integrated development environment (IDE) specifically built for writing and executing Swift and Kotlin scripts with high performance and a modern user interface.
-
-1. Editor pane and output pane.
-2. Write script to a file and run it using `/usr/bin/env swift` or `kotlinc -script`.
-3. Support for long-running and **interactive** scripts.
-4. Live, **unbuffered** output of the script as it executes.
-5. Display of errors and execution failures with **enhanced navigation**.
-6. Intelligent status bar indicating "Ready", "Running...", or "Awaiting for user input".
-7. System notifications when scripts require your attention.
-8. Indication of non-zero exit codes.
-9. Syntax highlighting for keywords, types, strings, and comments.
-10. Clickable error locations to navigate to code across different files.
 
 ![NovaSwift Logo](NovaSwift.png)
 
