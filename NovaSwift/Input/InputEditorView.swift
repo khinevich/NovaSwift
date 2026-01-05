@@ -45,7 +45,7 @@ struct InputEditorView: View {
             }
             
             // The core editor component handling text input and syntax highlighting.
-            SyntaxHighlightService(text: $text, selectedRange: $selectedRange, fontSize: settings.fontSize, theme: settings.theme, language: language)
+            SyntaxHighlightEditor(text: $text, selectedRange: $selectedRange, fontSize: settings.fontSize, theme: settings.theme, language: language)
                 .padding(0)
                 .clipped()
         }
