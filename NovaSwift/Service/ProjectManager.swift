@@ -8,14 +8,6 @@
 import Foundation
 import SwiftUI
 
-struct FileSystemItem: Identifiable, Hashable {
-    let id = UUID()
-    let name: String
-    let url: URL
-    let isDirectory: Bool
-    var children: [FileSystemItem]?
-}
-
 /// A service class responsible for managing file system interactions.
 ///
 /// `ProjectManager` handles the loading of directory contents, reading files, and managing

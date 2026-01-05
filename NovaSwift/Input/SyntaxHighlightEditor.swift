@@ -9,6 +9,10 @@ import SwiftUI
 import AppKit
 import Foundation
 
+/// A SwiftUI wrapper around `NSTextView` that provides advanced syntax highlighting capabilities.
+///
+/// `SyntaxHighlightEditor` bridges the gap between SwiftUI and AppKit's text handling, allowing for
+/// attribute-based syntax coloring (via `SyntaxHighlightEngine`) and line number display (via `LineNumberRulerView`).
 struct SyntaxHighlightEditor: NSViewRepresentable {
     @Binding var text: String
     @Binding var selectedRange: NSRange
@@ -101,6 +105,10 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
         Coordinator(self)
     }
 
+    /// The coordinator class acting as the delegate for the underlying `NSTextView`.
+    ///
+    /// This class handles text change notifications, updates the SwiftUI bindings,
+    /// and triggers the `SyntaxHighlightEngine` to refresh colors when text changes.
     class Coordinator: NSObject, NSTextViewDelegate {
         var parent: SyntaxHighlightEditor
         var theme: AppTheme

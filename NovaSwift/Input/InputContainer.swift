@@ -65,11 +65,9 @@ struct InputContainer: View {
                     }
                     .disabled(model.editorText.isEmpty)
                     
-                    Button(action: {
+                    Button("Save As") {
                         documentToExport = TextDocument(text: model.editorText)
                         isExporting = true
-                    }) {
-                        Label("Save As", systemImage: "square.and.arrow.down")
                     }
                     .disabled(model.editorText.isEmpty)
                     .keyboardShortcut("S", modifiers: [.command, .shift]) // Shift+Cmd+S

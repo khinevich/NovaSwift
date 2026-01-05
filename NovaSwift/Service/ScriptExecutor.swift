@@ -223,10 +223,28 @@ class ScriptExecutor {
                     let lastLine = self.output.hasSuffix("\n") ? (lines.dropLast().last ?? "") : (lines.last ?? "")
                     let trimmedLastLine = lastLine.trimmingCharacters(in: .whitespaces)
                     
-                    let promptSuffixes = [":", "?", ">", "$"]
-                    let isPromptPattern = promptSuffixes.contains { trimmedLastLine.hasSuffix($0) }
+                    // Determine if the last line looks like a prompt
+                    let lastChar = String(trimmedLastLine.suffix(1))
+                    let endsWithNewline = self.output.hasSuffix("\n")
                     
-                    let newState = !self.output.hasSuffix("\n") || isPromptPattern
+                    var newState = false
+                    
+                    if !endsWithNewline {
+                        // Case A: Partial Line (No newline at end)
+                        // It is likely a prompt if it ends in a prompt character.
+                        // We include ':' here because "Name: " is a standard prompt.
+                        if [":", "?", ">", "$"].contains(lastChar) {
+                            newState = true
+                        }
+                    } else {
+                        // Case B: Complete Line (Ends with newline)
+                        // We are stricter here.
+                        // ':' often denotes a header (e.g. "Output:"), so we ignore it.
+                        // '?' strongly implies a question (e.g. "Continue?"), so we accept it.
+                        if ["?"].contains(lastChar) {
+                            newState = true
+                        }
+                    }
                     
                     if newState && !self.isWaitingForInput {
                         let scriptName = self.currentDisplayPath.map { URL(fileURLWithPath: $0).lastPathComponent } 

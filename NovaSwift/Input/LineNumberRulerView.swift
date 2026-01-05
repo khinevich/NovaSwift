@@ -7,10 +7,16 @@
 
 import AppKit
 
-/// A custom ruler that draws line numbers next to the text view.
+/// A custom `NSRulerView` subclass that renders line numbers for an `NSTextView`.
+///
+/// `LineNumberRulerView` is attached to the vertical ruler of the text editor's scroll view.
+/// It efficiently calculates visible lines and draws their corresponding numbers, handling
+/// font scaling and theme changes (dark/light mode).
 class LineNumberRulerView: NSRulerView {
     
     /// The current theme, used to determine the text color of the line numbers.
+    ///
+    /// When changed, it triggers a redraw of the ruler.
     var theme: AppTheme = .dark {
         didSet {
             self.needsDisplay = true
@@ -18,11 +24,16 @@ class LineNumberRulerView: NSRulerView {
     }
     
     /// The font used for the line numbers.
-    /// We use a slightly smaller monospaced font than the main editor to keep it subtle.
+    ///
+    /// This uses a monospaced system font (size 10, regular weight) to ensure
+    /// numbers align neatly. It is distinct from the editor's font size to keep the UI compact.
     var font: NSFont {
         return .monospacedSystemFont(ofSize: 10, weight: .regular)
     }
     
+    /// Initializes a new line number ruler for the specified text view.
+    ///
+    /// - Parameter textView: The `NSTextView` that this ruler will serve.
     init(textView: NSTextView) {
         super.init(scrollView: textView.enclosingScrollView, orientation: .verticalRuler)
         self.clientView = textView
@@ -34,7 +45,16 @@ class LineNumberRulerView: NSRulerView {
         fatalError("init(coder:) has not been implemented")
     }
     
-    /// Draws the line numbers.
+    /// Draws the hash marks and labels (line numbers) in the ruler's view.
+    ///
+    /// This method overrides `NSRulerView`'s drawing logic to render custom line numbers.
+    /// It performs the following steps for performance:
+    /// 1.  Calculates the visible glyph range to avoid processing the entire document.
+    /// 2.  Determines the starting line number by counting newlines up to the visible range.
+    /// 3.  Iterates through the visible lines, calculating their vertical position.
+    /// 4.  Draws the line number only if it falls within the visible rect.
+    ///
+    /// - Parameter rect: The dirty rectangle to redraw.
     override func drawHashMarksAndLabels(in rect: NSRect) {
         guard let textView = self.clientView as? NSTextView,
               let layoutManager = textView.layoutManager,

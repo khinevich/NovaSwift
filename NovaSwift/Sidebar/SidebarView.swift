@@ -118,7 +118,11 @@ struct SidebarView: View {
                                 .foregroundColor(currentFile == item.url ? .primary : .secondary)
                                 .contentShape(Rectangle()) // Makes the whole row clickable, not just the text
                                 .onTapGesture { // Selection (Click)
-                                    currentFile = item.url
+                                    if viewModel.renamingItemId == nil {
+                                        if !item.isDirectory {
+                                            viewModel.openFile(item, currentFile: $currentFile, contentBinding: $selectedFileContent)
+                                        }
+                                    }
                                 }
                                 .background { // "Enter to Rename" (Keyboard)
                                     // "Ghost" Button: Only exists if this row is selected

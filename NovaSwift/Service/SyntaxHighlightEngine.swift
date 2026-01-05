@@ -7,6 +7,11 @@
 
 import AppKit
 
+/// A service class responsible for applying syntax highlighting to `NSTextStorage`.
+///
+/// `SyntaxHighlightEngine` parses the text content against language-specific rules (regex patterns)
+/// and applies the corresponding color and font attributes defined in `ThemeColors`.
+/// It manages priority rules to ensuring that strings and comments are not incorrectly highlighted as code.
 class SyntaxHighlightEngine {
     
     /// Highlights the text storage using the exact palette from ThemeColors.
