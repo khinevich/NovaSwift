@@ -4,6 +4,8 @@ Native macOS integrated development environment (IDE) specifically built for wri
 
 ![NovaSwift Logo](NovaSwift.png)
 
+<video src="demo/NovaSwiftDemo.mov" controls="controls" style="max-width: 100%;"></video>
+
 ## Features
 
 NovaSwift provides a streamlined experience for script development on macOS:
