@@ -4,7 +4,7 @@ Native macOS integrated development environment (IDE) specifically built for wri
 
 ![NovaSwift Logo](NovaSwift.png)
 
-<video src="demo/NovaSwiftDemo.mov" controls="controls" style="max-width: 100%;"></video>
+https://github.com/user-attachments/assets/9026b84c-11f7-4ef6-bd0d-c6b524bbacc3
 
 ## Features
 
