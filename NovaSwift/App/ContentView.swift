@@ -20,8 +20,6 @@ struct ContentView: View {
     // MARK: - Body
     
     var body: some View {
-        @Bindable var model = model
-        
         NavigationStack {
             VStack(spacing: 0) {
                 // Main horizontal split view dividing Sidebar and Content
@@ -77,7 +75,7 @@ struct ContentView: View {
                 ToolbarItemGroup(placement: .primaryAction) {
                     // This replaces your entire file
                     ShareLink(item: ScriptOutputExport(content: model.executor.output), preview: SharePreview("Output.txt", image: Image(systemName: "doc.text"))) {
-                        Image(systemName: "square.and.arrow.up") // Standard macOS Share Icon
+                        Image(systemName: "square.and.arrow.up")
                     } // Lazy Creation: The file Output.txt is only created when the user clicks share
                     .disabled(model.executor.isRunning || model.executor.output.isEmpty)
                     
