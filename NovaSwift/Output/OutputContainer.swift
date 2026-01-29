@@ -22,7 +22,6 @@ struct OutputContainer: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Top Bar
             PaneBar {
                 Text("Output")
                     .font(.headline)
