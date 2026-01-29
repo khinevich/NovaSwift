@@ -13,7 +13,9 @@ enum Language: String, CaseIterable, Identifiable {
     case swift
     case kotlin
     
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
     
     /// The user-friendly display name of the language.
     var displayName: String {
