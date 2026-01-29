@@ -27,7 +27,7 @@ struct ContentView: View {
                     // Sidebar Pane: Displays the file explorer
                     if model.isSidebarVisible {
                         SidebarView(
-                            projectManager: model.projectManager,
+                            viewModel: model.sidebarModel,
                             selectedFileContent: $model.editorText,
                             currentFile: $model.currentFile
                         )

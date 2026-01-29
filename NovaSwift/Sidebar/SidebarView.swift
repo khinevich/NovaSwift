@@ -21,7 +21,7 @@ struct SidebarView: View {
     // MARK: - View Model
     
     /// The view model managing the sidebar's state and logic.
-    @State private var viewModel: SidebarModel
+    @Bindable var viewModel: SidebarModel
     
     // MARK: - Bindings
     
@@ -33,16 +33,10 @@ struct SidebarView: View {
     
     // MARK: - Local State
     
-    /// Focus state for the rename text field.
+    /// Focus state for the rename text field, automatically placesthe cursor inside
+    ///
+    /// The Dismissal: When the user presses Enter, the focus state naturally becomes false, or you can set it to false programmatically to remove the cursor.
     @FocusState private var isRenaming: Bool
-    
-    // MARK: - Initialization
-    
-    init(projectManager: ProjectManager, selectedFileContent: Binding<String>, currentFile: Binding<URL?>) {
-        self._viewModel = State(initialValue: SidebarModel(projectManager: projectManager))
-        self._selectedFileContent = selectedFileContent
-        self._currentFile = currentFile
-    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -117,7 +111,7 @@ struct SidebarView: View {
                             Text(item.name)
                                 .foregroundColor(currentFile == item.url ? .primary : .secondary)
                                 .contentShape(Rectangle()) // Makes the whole row clickable, not just the text
-                                .onTapGesture { // Selection (Click)
+                                .onTapGesture {
                                     if viewModel.renamingItemId == nil {
                                         if !item.isDirectory {
                                             viewModel.openFile(item, currentFile: $currentFile, contentBinding: $selectedFileContent)
@@ -129,9 +123,9 @@ struct SidebarView: View {
                                     if currentFile == item.url {
                                         Button("RenameShortcut") {
                                             viewModel.startRenaming(item)
-                                            isRenaming = true // trigger focus immediately
+                                            isRenaming = true
                                         }
-                                        .keyboardShortcut(.return, modifiers: []) // ↵ Key
+                                        .keyboardShortcut(.return, modifiers: []) // "Enter" Key
                                         .opacity(0)
                                     }
                                 }
@@ -145,7 +139,7 @@ struct SidebarView: View {
                             .fill(currentFile == item.url && viewModel.renamingItemId != item.id ? Color.blue.opacity(0.2) : Color.clear)
                     )
                     .contentShape(Rectangle())
-                    .contextMenu {
+                    .contextMenu { // right click functions
                         Button("Rename") {
                             viewModel.startRenaming(item)
                             isRenaming = true
@@ -203,5 +197,5 @@ struct SidebarView: View {
 #Preview {
     @Previewable @State var selectedFileContent: String = "test.swift"
     @Previewable @State var currentFile: URL? = nil
-    SidebarView(projectManager: ProjectManager(), selectedFileContent: $selectedFileContent, currentFile: $currentFile)
+    SidebarView(viewModel: SidebarModel(projectManager: ProjectManager()), selectedFileContent: $selectedFileContent, currentFile: $currentFile)
 }

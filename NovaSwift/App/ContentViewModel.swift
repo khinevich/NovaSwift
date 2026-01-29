@@ -19,11 +19,12 @@ class ContentViewModel {
     // MARK: - Services
     
     /// The central service managing script execution.
-    var executor: ScriptExecutor
+    let executor = ScriptExecutor()
     
     /// The project manager handling file system operations.
-    var projectManager: ProjectManager
+    let projectManager = ProjectManager()
     
+    var sidebarModel: SidebarModel
     // MARK: - Editor State
     
     /// The current text content of the editor.
@@ -63,13 +64,8 @@ class ContentViewModel {
     // MARK: - Initialization
     
     /// Initializes the view model with injected dependencies.
-    ///
-    /// - Parameters:
-    ///   - executor: The script executor service. Defaults to a new instance.
-    ///   - projectManager: The project manager service. Defaults to a new instance.
-    init(executor: ScriptExecutor = ScriptExecutor(), projectManager: ProjectManager = ProjectManager()) {
-        self.executor = executor
-        self.projectManager = projectManager
+    init() {
+        self.sidebarModel = SidebarModel(projectManager: projectManager)
     }
     
     // MARK: - Actions
