@@ -14,6 +14,7 @@ import Combine
 /// - Interaction with the `ProjectManager` for file system operations.
 /// - Management of file renaming state (which item is being renamed and the temporary name).
 /// - Logic for creating new files and handling deletions.
+/// - Every property in this class runs on the Main Thread, since those states directly updating the UI
 @MainActor
 @Observable
 class SidebarModel {
@@ -69,7 +70,7 @@ class SidebarModel {
         let newFileURL = projectManager.createFile(at: root, name: name)
         
         // Find the new item in the list to start renaming.
-        // We compare standardized paths to ensure robustness against symlinks or path representation differences.
+        // compare standardized paths to ensure robustness against symlinks or path representation differences.
         if let newItem = projectManager.items.first(where: { $0.url.standardizedFileURL.path == newFileURL.standardizedFileURL.path }) {
             startRenaming(newItem)
         }
@@ -85,7 +86,7 @@ class SidebarModel {
         projectManager.deleteFile(at: item.url)
         
         // If the deleted file was the one currently open, clear the editor state.
-        // We use standardized URLs to ensure reliable comparison.
+        // use standardized URLs to ensure reliable comparison.
         if let openURL = currentFile.wrappedValue, openURL.standardizedFileURL.path == item.url.standardizedFileURL.path {
             currentFile.wrappedValue = nil
             contentBinding.wrappedValue = ""

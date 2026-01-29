@@ -44,7 +44,6 @@ struct InputContainer: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Top Bar: title, file actions, and execution controls.
             PaneBar {
                 Text("Input")
                     .font(.headline)
@@ -70,7 +69,7 @@ struct InputContainer: View {
                         isExporting = true
                     }
                     .disabled(model.editorText.isEmpty)
-                    .keyboardShortcut("S", modifiers: [.command, .shift]) // Shift+Cmd+S
+                    .keyboardShortcut("S", modifiers: [.command, .shift])
                     
                     Button("Save") {
                         if model.currentFile != nil {
@@ -82,7 +81,7 @@ struct InputContainer: View {
                         }
                     }
                     .opacity(0)
-                    .keyboardShortcut("s", modifiers: .command) // Cmd+S
+                    .keyboardShortcut("s", modifiers: .command)
                 }
                 .controlSize(.large)
                 

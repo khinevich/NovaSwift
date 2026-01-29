@@ -100,7 +100,7 @@ struct SyntaxHighlightEditor: NSViewRepresentable {
             ruler.needsDisplay = true
         }
     }
-
+    // protocol interface
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
