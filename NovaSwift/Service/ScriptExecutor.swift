@@ -16,7 +16,7 @@ import UserNotifications
 @Observable
 class ScriptExecutor {
     // MARK: - Published State
-    
+    var a = SyntaxHighlightEngine()
     /// The accumulated standard output and standard error from the running script.
     var output: String = ""
     
